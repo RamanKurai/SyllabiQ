@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, FileText, ListChecks, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { postQuery, streamQuery, QueryRequest } from '../../lib/api';
 
 interface Message {
   id: string;
@@ -29,6 +32,7 @@ export function ChatInterface({
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const streamingController = useRef<AbortController | undefined>(undefined);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,18 +60,80 @@ export function ChatInterface({
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    // Call backend API with streaming support. Fall back to full response if streaming not available.
+    const marksMap: Record<string, number> = { '2-mark': 2, '5-mark': 5, '10-mark': 10 };
+    const req: QueryRequest = {
+      query: input.trim(),
+      workflow: 'qa',
+      marks: marksMap[examMode] || 5,
+      top_k: 5,
+      format: 'paragraph',
+      subject: selectedSubject,
+      topic: selectedTopic,
+    };
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: generateMockResponse(input, examMode, selectedTopic),
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
+    // create placeholder AI message that we will append to as stream arrives
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'ai',
+      content: '',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, aiMessage]);
+
+    // Abort previous controller if any
+    streamingController.current?.abort();
+    const controller = new AbortController();
+    streamingController.current = controller;
+
+    try {
+      let streamed = false;
+      for await (const chunk of streamQuery(req, controller.signal)) {
+        streamed = true;
+        // append chunk to last ai message
+        setMessages((prev) => {
+          const copy = [...prev];
+          const idx = copy.findIndex((m) => m.id === aiMessage.id);
+          if (idx === -1) {
+            copy.push({ ...aiMessage, content: chunk });
+          } else {
+            copy[idx] = { ...copy[idx], content: copy[idx].content + chunk };
+          }
+          return copy;
+        });
+      }
+
+      if (!streamed) {
+        // no streaming; fetch full response
+        const full = await postQuery(req);
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== aiMessage.id),
+          {
+            id: (Date.now() + 2).toString(),
+            type: 'ai',
+            content: full.answer || generateMockResponse(input, examMode, selectedTopic),
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // finalize timestamp for streamed message
+        setMessages((prev) => prev.map((m) => (m.id === aiMessage.id ? { ...m, timestamp: new Date() } : m)));
+      }
+    } catch (err: any) {
+      // replace or append error message
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== aiMessage.id),
+        {
+          id: (Date.now() + 3).toString(),
+          type: 'ai',
+          content: `Error: ${err.message || 'Unable to fetch response from server.'}`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+      streamingController.current = undefined;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -223,7 +289,7 @@ function EmptyState({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
   const isUser = message.type === 'user';
   
   return (
@@ -246,7 +312,13 @@ function MessageBubble({ message }: { message: Message }) {
             <span className="text-sm font-medium text-blue-600">SyllabiQ AI</span>
           </div>
         )}
-        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+        ) : (
+          <div className="prose max-w-none text-sm leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          </div>
+        )}
         <p
           className={`text-xs mt-2 ${
             isUser ? 'text-blue-100' : 'text-gray-500'

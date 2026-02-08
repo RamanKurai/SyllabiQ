@@ -138,3 +138,30 @@ SyllabiQ is committed to providing an accessible learning experience for all stu
 ---
 
 **Note**: This is a frontend demonstration. In production, connect to a real AI backend (like OpenAI, Anthropic, or custom models) and implement proper authentication and data persistence.
+ 
+## Backend Integration (developer)
+
+To connect the frontend to the SyllabiQ FastAPI backend during development:
+
+1. Create a `.env` file from the example:
+
+```bash
+cp .env.example .env
+```
+
+2. Update `VITE_API_BASE` in `.env` if your backend runs on a different host/port (default: `http://localhost:8000/api`).
+
+3. Start the backend (from `SyllabiQ-service`):
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+4. Start the frontend:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+The chat UI will POST queries to `${VITE_API_BASE}/v1/query`. The frontend reads `VITE_API_BASE` from Vite env variables (defaults to `http://localhost:8000/api`).

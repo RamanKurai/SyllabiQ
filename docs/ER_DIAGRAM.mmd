@@ -1,0 +1,13 @@
+```mermaid
+flowchart TB
+    Browser[User Browser]
+    subgraph Frontend
+      UI[React UI (Vite)]
+      Components[ChatInterface, Sidebar, Header, Feature UIs]
+      APIClient[src/lib/api.ts]
+    end
+    Backend[Backend API (FastAPI)]
+    DB[(Postgres)]
+
+    Browser --> UI --> Components --> APIClient --> Backend --> DB
+```

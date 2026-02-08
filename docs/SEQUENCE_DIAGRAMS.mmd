@@ -1,0 +1,14 @@
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI
+    participant APIClient
+    participant Backend
+
+    User->>UI: enters query
+    UI->>APIClient: postQuery / streamQuery
+    APIClient->>Backend: POST /v1/query
+    Backend-->>APIClient: response (answer, citations)
+    APIClient-->>UI: answer chunks
+    UI-->>User: display streaming answer
+```
