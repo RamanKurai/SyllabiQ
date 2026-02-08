@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ChatInterface } from './components/ChatInterface';
 import { NotesSummarizer } from './components/NotesSummarizer';
 import { PracticeGenerator } from './components/PracticeGenerator';
+import { Login } from './components/Auth/Login';
+import { Signup } from './components/Auth/Signup';
+import { LoginPage } from './components/pages/LoginPage';
+import { SignupPage } from './components/pages/SignupPage';
+import ProtectedRoute from './components/organisms/ProtectedRoute';
 
 // Mock data for demonstration
 const SUBJECTS = [
@@ -82,6 +87,10 @@ export default function App() {
   const [history, setHistory] = useState<Array<{ id: string; query: string; timestamp: Date }>>([]);
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const authPaths = ['/login', '/signup', '/admin-login'];
+  const isAuthRoute = authPaths.some((p) => location.pathname.startsWith(p));
 
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject);
@@ -106,6 +115,20 @@ export default function App() {
 
   // Main app with sidebar
   const topics = selectedSubject ? TOPICS[selectedSubject] || [] : [];
+
+  if (isAuthRoute) {
+    // Fullscreen auth pages — they render their own header/template
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900">
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/admin-login" element={<div className="p-6">Admin / staff login (use /admin routes)</div>} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
@@ -132,34 +155,40 @@ export default function App() {
             <Route
               path="/chat"
               element={
-                <ChatInterface
-                  selectedSubject={selectedSubject}
-                  selectedTopic={selectedTopic}
-                  examMode={examMode}
-                  onSwitchToNotes={() => navigate('/notes')}
-                  onSwitchToPractice={() => navigate('/practice')}
-                />
+                <ProtectedRoute>
+                  <ChatInterface
+                    selectedSubject={selectedSubject}
+                    selectedTopic={selectedTopic}
+                    examMode={examMode}
+                    onSwitchToNotes={() => navigate("/notes")}
+                    onSwitchToPractice={() => navigate("/practice")}
+                  />
+                </ProtectedRoute>
               }
             />
             <Route
               path="/notes"
               element={
-                <NotesSummarizer
-                  selectedSubject={selectedSubject}
-                  selectedTopic={selectedTopic}
-                  onBack={() => navigate('/chat')}
-                />
+                <ProtectedRoute>
+                  <NotesSummarizer
+                    selectedSubject={selectedSubject}
+                    selectedTopic={selectedTopic}
+                    onBack={() => navigate("/chat")}
+                  />
+                </ProtectedRoute>
               }
             />
             <Route
               path="/practice"
               element={
-                <PracticeGenerator
-                  selectedSubject={selectedSubject}
-                  selectedTopic={selectedTopic}
-                  onBack={() => navigate('/chat')}
-                  topics={topics}
-                />
+                <ProtectedRoute>
+                  <PracticeGenerator
+                    selectedSubject={selectedSubject}
+                    selectedTopic={selectedTopic}
+                    onBack={() => navigate("/chat")}
+                    topics={topics}
+                  />
+                </ProtectedRoute>
               }
             />
             <Route path="*" element={<Navigate to="/chat" replace />} />

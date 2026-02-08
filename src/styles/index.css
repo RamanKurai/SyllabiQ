@@ -1,6 +1,6 @@
 @import './fonts.css';
-@import './tailwind.css';
 @import './theme.css';
+@import './tailwind.css';
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;

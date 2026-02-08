@@ -18,10 +18,22 @@ export type QueryResponse = {
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8000/api';
 
+import { authHeader } from "./auth";
+
 async function postJson<T = any>(path: string, body: any, init?: RequestInit): Promise<T> {
+  const defaultHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...authHeader(),
+  };
+
+  const mergedHeaders = {
+    ...(init?.headers as Record<string, string> | undefined),
+    ...defaultHeaders,
+  };
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    method: 'POST',
+    headers: mergedHeaders,
+    method: "POST",
     body: JSON.stringify(body),
     ...init,
   });
@@ -34,6 +46,32 @@ async function postJson<T = any>(path: string, body: any, init?: RequestInit): P
 
 export async function postQuery(req: QueryRequest): Promise<QueryResponse> {
   return await postJson<QueryResponse>('/v1/query', req);
+}
+
+// Authentication helpers
+export type SignupPayload = {
+  email: string;
+  password: string;
+  full_name?: string | null;
+  institution_id?: number | null;
+};
+
+export type LoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type Token = {
+  access_token: string;
+  token_type?: string;
+};
+
+export async function authSignup(payload: SignupPayload) {
+  return await postJson('/auth/signup', payload);
+}
+
+export async function authLogin(payload: LoginPayload): Promise<Token> {
+  return await postJson<Token>('/auth/login', payload);
 }
 
 // Streaming helper: attempts to read server streaming (SSE-ish or NDJSON) and yields text chunks.
@@ -119,6 +157,12 @@ export async function getSubjects(): Promise<Array<{ id: string; name: string }>
 
 export async function getTopics(subjectId: string): Promise<Array<{ id: string; name: string }>> {
   const res = await fetch(`${API_BASE}/v1/subjects/${encodeURIComponent(subjectId)}/topics`);
+  if (!res.ok) throw new Error(await res.text());
+  return await res.json();
+}
+
+export async function getInstitutions(): Promise<Array<{ id: number; name: string }>> {
+  const res = await fetch(`${API_BASE}/institutions`);
   if (!res.ok) throw new Error(await res.text());
   return await res.json();
 }
