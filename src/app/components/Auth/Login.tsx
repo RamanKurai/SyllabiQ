@@ -11,7 +11,7 @@ type LoginForm = {
   password: string;
 };
 
-export function Login() {
+export function Login({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
   const methods = useForm<LoginForm>({ mode: "onBlur" });
   const { register, handleSubmit, formState } = methods;
   const [error, setError] = React.useState<string | null>(null);
@@ -22,10 +22,17 @@ export function Login() {
   async function onSubmit(values: LoginForm) {
     setError(null);
     try {
-      await auth.login(values.email, values.password);
-      // redirect to requested page or default
-      const from = (location.state as any)?.from?.pathname || "/chat";
-      navigate(from, { replace: true });
+
+      const minimalUser = await auth.login(values.email, values.password);
+      const roles: string[] = (minimalUser?.roles || (auth.user as any)?.roles) || [];
+      if (roles.includes("SuperAdmin") || roles.includes("InstitutionAdmin")) {
+        navigate("/admin", { replace: true });
+      } else if (roles.includes("Teacher") || roles.includes("Principal")) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        // students and default users go to /dashboard
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err: any) {
       setError(err?.message ? String(err.message) : "Login failed");
     }
@@ -33,51 +40,51 @@ export function Login() {
 
   return (
     <div className="w-full">
-      <Form {...methods}>
+      <Form {...(methods as any)}>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  {...register("email", { required: "Email required" })}
-                  type="email"
-                  placeholder="you@university.edu"
-                  aria-label="Email"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+          <FormItem>
+            <FormLabel>Email</FormLabel>
+            <FormControl>
+              <Input
+                {...register("email", { required: "Email required" })}
+                type="email"
+                placeholder="you@university.edu"
+                aria-label="Email"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
 
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input
-                  {...register("password", { required: "Password required" })}
-                  type="password"
-                  placeholder="••••••••"
-                  aria-label="Password"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+          <FormItem>
+            <FormLabel>Password</FormLabel>
+            <FormControl>
+              <Input
+                {...register("password", { required: "Password required" })}
+                type="password"
+                placeholder="••••••••"
+                aria-label="Password"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
 
-            {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-destructive text-sm">{error}</p>}
 
-            <div className="flex items-center justify-between gap-2">
-              <Button type="submit" className="flex-1">
-                {formState.isSubmitting ? "Signing in..." : "Sign in"}
-              </Button>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <Button type="submit" className="flex-1">
+              {formState.isSubmitting ? "Signing in..." : "Sign in"}
+            </Button>
+          </div>
 
-            <p className="text-sm text-muted-foreground">
-              New here?{" "}
-              <Link to="/signup" className="text-primary underline">
-                Create an account
-              </Link>
-            </p>
-          </form>
-        </Form>
-      </div>
+          <p className="text-sm text-muted-foreground">
+            New here?{" "}
+            <Link to="/signup" className="text-primary underline">
+              Create an account
+            </Link>
+          </p>
+        </form>
+      </Form>
+    </div>
   );
 }
 

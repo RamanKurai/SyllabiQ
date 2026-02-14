@@ -61,6 +61,12 @@ export function Signup() {
       await authSignup(payload);
       // after signup user will be in pending status; redirect to login
       navigate("/login");
+      try {
+        const { showSuccess } = await import("../../../app/lib/toast");
+        showSuccess("Account created — pending approval by your institution.");
+      } catch {
+        // ignore
+      }
     } catch (err: any) {
       setError(err?.message ? String(err.message) : "Signup failed");
     }

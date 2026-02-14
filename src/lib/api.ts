@@ -20,28 +20,58 @@ const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:80
 
 import { authHeader } from "./auth";
 
+async function fetchJson<T = any>(input: string, init?: RequestInit): Promise<T> {
+  const url = input.startsWith("http") ? input : `${API_BASE}${input}`;
+  const res = await fetch(url, init);
+  const contentType = res.headers.get("content-type") || "";
+  let payload: any = null;
+  try {
+    if (contentType.includes("application/json")) {
+      payload = await res.json();
+    } else {
+      payload = await res.text();
+    }
+  } catch {
+    payload = null;
+  }
+
+  if (!res.ok) {
+    // Try to extract a useful message from common shapes
+    let message = `Request failed: ${res.status}`;
+    if (payload) {
+      if (typeof payload === "string") {
+        message = payload;
+      } else if (payload.detail) {
+        message = payload.detail;
+      } else if (payload.message) {
+        message = payload.message;
+      } else if (payload.error) {
+        message = payload.error;
+      } else {
+        message = JSON.stringify(payload);
+      }
+    }
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
 async function postJson<T = any>(path: string, body: any, init?: RequestInit): Promise<T> {
   const defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...authHeader(),
   };
-
   const mergedHeaders = {
     ...(init?.headers as Record<string, string> | undefined),
     ...defaultHeaders,
   };
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: mergedHeaders,
+  return await fetchJson<T>(path, {
     method: "POST",
+    headers: mergedHeaders,
     body: JSON.stringify(body),
     ...init,
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Request failed: ${res.status}`);
-  }
-  return (await res.json()) as T;
 }
 
 export async function postQuery(req: QueryRequest): Promise<QueryResponse> {
@@ -64,6 +94,7 @@ export type LoginPayload = {
 export type Token = {
   access_token: string;
   token_type?: string;
+  roles?: string[];
 };
 
 export async function authSignup(payload: SignupPayload) {
@@ -150,20 +181,24 @@ export async function* streamQuery(req: QueryRequest, signal?: AbortSignal): Asy
 }
 
 export async function getSubjects(): Promise<Array<{ id: string; name: string }>> {
-  const res = await fetch(`${API_BASE}/v1/subjects`);
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  return await fetchJson(`/v1/subjects`);
 }
 
 export async function getTopics(subjectId: string): Promise<Array<{ id: string; name: string }>> {
-  const res = await fetch(`${API_BASE}/v1/subjects/${encodeURIComponent(subjectId)}/topics`);
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  return await fetchJson(`/v1/subjects/${encodeURIComponent(subjectId)}/topics`);
 }
 
 export async function getInstitutions(): Promise<Array<{ id: number; name: string }>> {
-  const res = await fetch(`${API_BASE}/institutions`);
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  return await fetchJson('/institutions');
+}
+
+export async function getDashboard(): Promise<any> {
+  const authHeaders = (await import("./auth")).authHeader();
+  return await fetchJson('/dashboard/me', { headers: { "Content-Type": "application/json", ...authHeaders } });
+}
+
+export async function getAuthMe(): Promise<any> {
+  const authHeaders = (await import("./auth")).authHeader();
+  return await fetchJson('/auth/me', { headers: { "Content-Type": "application/json", ...authHeaders } });
 }
 

@@ -1,14 +1,24 @@
 ```mermaid
 sequenceDiagram
     participant User
-    participant UI
+    participant UI as Frontend\ UI
     participant APIClient
-    participant Backend
+    participant Backend as Backend\ (/api)
+    participant Agents as "Intent / Retrieval / Generation / Validation"
 
     User->>UI: enters query
-    UI->>APIClient: postQuery / streamQuery
-    APIClient->>Backend: POST /v1/query
-    Backend-->>APIClient: response (answer, citations)
-    APIClient-->>UI: answer chunks
-    UI-->>User: display streaming answer
+    UI->>APIClient: postQuery / streamQuery (calls `${VITE_API_BASE}/v1/query`)
+    APIClient->>Backend: POST /api/v1/query (Accept: text/event-stream optional)
+    note right of Backend: Backend currently returns JSON (placeholder agents)\nNo SSE by default; client falls back to full response
+    Backend->>Agents: intent detection -> retrieval -> generation -> validation
+    Agents-->>Backend: validated_answer + citations
+    Backend-->>APIClient: JSON response (answer, citations, metadata)
+    APIClient-->>UI: deliver answer (streaming when supported; otherwise full payload)
+    UI-->>User: render answer
+
+    %% Authentication (login) flow
+    User->>UI: submits credentials
+    UI->>APIClient: POST /api/auth/login
+    APIClient-->>UI: token (access_token, roles)
+    UI-->>User: store token in localStorage; use Authorization: Bearer <token> for protected calls
 ```

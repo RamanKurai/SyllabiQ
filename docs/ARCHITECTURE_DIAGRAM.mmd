@@ -1,0 +1,418 @@
+# SyllabiQ — Architecture Diagrams
+
+---
+
+## High-Level Architecture
+
+```mermaid
+flowchart LR
+    subgraph Client["Client"]
+        User[👤 User]
+        Frontend["React App\n(Vite + TypeScript)"]
+    end
+
+    subgraph Backend["Backend"]
+        API["FastAPI\nREST API"]
+        Agents["AI Pipeline\nIntent → Retrieval → Generation → Validation"]
+    end
+
+    subgraph Data["Data"]
+        DB[(PostgreSQL)]
+    end
+
+    User --> Frontend
+    Frontend -->|"HTTP / JWT"| API
+    API --> Agents
+    API --> DB
+    Agents --> DB
+```
+
+```mermaid
+flowchart TB
+    subgraph SyllabiQ["SyllabiQ System"]
+        direction TB
+        subgraph Presentation["Presentation"]
+            FE["React Frontend\n• Auth (Login/Signup)\n• Chat (Prepare)\n• Notes Summarizer\n• Practice Generator\n• Admin Dashboard\n• Student Dashboard"]
+        end
+
+        subgraph Service["Service"]
+            API["FastAPI API\n• /auth • /content • /admin\n• /dashboard • /institutions\n• /v1/query"]
+        end
+
+        subgraph AI["AI Layer"]
+            Pipeline["Pipeline: Intent → RAG → Generate → Validate"]
+        end
+
+        subgraph Persistence["Persistence"]
+            DB[(PostgreSQL\nUsers • Roles • Content\nSyllabi • Audit)]
+        end
+    end
+
+    User[👤 User] --> Presentation
+    Presentation --> Service
+    Service --> AI
+    Service --> Persistence
+    AI --> Persistence
+```
+
+---
+
+## Detailed Architecture (Full)
+
+```mermaid
+flowchart TB
+    subgraph User["👤 User"]
+        U[User / Student / Admin]
+    end
+
+    subgraph Presentation["Presentation Layer (Frontend)"]
+        direction TB
+        subgraph Stack["Stack: Vite + React + TypeScript"]
+            V[Vite]
+            R[React]
+            T[TypeScript]
+        end
+
+        subgraph Routing["Routing"]
+            R_Login["/login"]
+            R_Signup["/signup"]
+            R_AdminLogin["/admin-login"]
+            R_Admin["/admin"]
+            R_Dashboard["/dashboard"]
+            R_Prepare["/prepare"]
+            R_Notes["/notes"]
+            R_Practice["/practice"]
+        end
+
+        subgraph Components["Components"]
+            subgraph Pages["Pages"]
+                LP[LandingPage]
+                LoginP[LoginPage]
+                SignupP[SignupPage]
+                DashP[DashboardPage]
+                AdminDash[AdminDashboard]
+            end
+            subgraph Feature["Feature Components"]
+                CI[ChatInterface]
+                NS[NotesSummarizer]
+                PG[PracticeGenerator]
+            end
+            subgraph Layout["Layout"]
+                H[Header]
+                S[Sidebar]
+                TT[ThemeToggle]
+            end
+            subgraph Admin["Admin"]
+                AdminLayout[AdminLayout]
+                AdminUsers[AdminUsers]
+                AdminRoles[AdminRoles]
+                AdminInstitutions[AdminInstitutions]
+                AdminContentManager[AdminContentManager]
+                AdminKpis[AdminKpis]
+            end
+            subgraph Auth["Auth"]
+                Login[Login]
+                Signup[Signup]
+                ProtectedRoute[ProtectedRoute]
+            end
+        end
+
+        subgraph State["State & Context"]
+            AuthCtx[AuthContext]
+            DashCtx[DashboardContext]
+        end
+
+        subgraph Lib["Client Libraries"]
+            API[api.ts]
+            AuthLib[auth.ts]
+        end
+    end
+
+    subgraph Transport["Transport Layer"]
+        HTTP[HTTP/HTTPS]
+        CORS[CORS Middleware]
+    end
+
+    subgraph API["API Layer (FastAPI)"]
+        direction TB
+        subgraph Middleware["Middleware"]
+            CORS_M[CORS]
+            DBSession[DBSessionMiddleware]
+        end
+
+        subgraph Routes["API Routes"]
+            API_Root["/api (root)"]
+            API_Auth["/api/auth"]
+            API_Content["/api/content"]
+            API_Admin["/api/admin"]
+            API_Inst["/api/institutions"]
+            API_Dash["/api/dashboard"]
+        end
+
+        subgraph Endpoints["Key Endpoints"]
+            E_Query["POST /v1/query"]
+            E_Login["POST /auth/login"]
+            E_Signup["POST /auth/signup"]
+            E_Me["GET /auth/me"]
+            E_Dashboard["GET /dashboard/me"]
+            E_Institutions["GET /institutions"]
+        end
+    end
+
+    subgraph Business["Business Logic Layer"]
+        direction TB
+        subgraph Agents["AI Agents Pipeline"]
+            IA[IntentAgent]
+            RA[RetrievalAgent]
+            GA[GenerationAgent]
+            VA[ValidationAgent]
+        end
+        subgraph RAG["RAG"]
+            Retriever[retriever.py]
+            VectorStore["Vector Store (placeholder)"]
+        end
+        subgraph AuthLogic["Auth Logic"]
+            JWT[JWT encode/decode]
+            PwdHash[Password hashing]
+            RBAC[RBAC: SuperAdmin, InstitutionAdmin]
+        end
+    end
+
+    subgraph Data["Data Access Layer"]
+        direction TB
+        subgraph ORM["SQLModel (async SQLAlchemy)"]
+            Session[AsyncSession]
+        end
+        subgraph Models["Domain Models"]
+            M_User[User]
+            M_Role[Role]
+            M_RoleAssign[RoleAssignment]
+            M_Inst[Institution]
+            M_Course[Course]
+            M_Subject[Subject]
+            M_Syllabus[Syllabus]
+            M_Topic[Topic]
+            M_UserCtx[UserContext]
+            M_Audit[AuditLog]
+            M_Visit[TopicVisit]
+        end
+    end
+
+    subgraph Persistence["Persistence Layer"]
+        PostgreSQL[(PostgreSQL)]
+    end
+
+    %% User interactions
+    U --> Presentation
+
+    %% Frontend flow
+    Components --> State
+    Lib --> API
+    State --> Lib
+
+    %% Transport
+    Lib --> HTTP
+    HTTP --> CORS
+
+    %% API flow
+    CORS --> Routes
+    Routes --> Endpoints
+    Endpoints --> Business
+
+    %% Business flow
+    E_Query --> IA
+    IA --> RA
+    RA --> GA
+    GA --> VA
+    RA --> Retriever
+    Retriever --> VectorStore
+
+    E_Login --> AuthLogic
+    E_Signup --> AuthLogic
+
+    %% Data flow
+    Business --> ORM
+    Endpoints --> ORM
+    ORM --> Models
+    Models --> PostgreSQL
+```
+
+---
+
+## Layer 2: Component Hierarchy
+
+```mermaid
+flowchart TB
+    subgraph Frontend["Frontend Structure"]
+        App[App.tsx]
+        App --> Fullscreen{Fullscreen Route?}
+        Fullscreen -->|Yes| AuthRoutes[Auth Routes]
+        Fullscreen -->|No| MainLayout[Main Layout]
+
+        AuthRoutes --> LoginPage
+        AuthRoutes --> SignupPage
+        AuthRoutes --> AdminLogin
+        AuthRoutes --> AdminDashboard
+        AuthRoutes --> DashboardPage
+
+        MainLayout --> Header
+        MainLayout --> Sidebar
+        MainLayout --> Content[Content Area]
+
+        Content --> ChatInterface["/prepare"]
+        Content --> NotesSummarizer["/notes"]
+        Content --> PracticeGenerator["/practice"]
+
+        ProtectedRoute --> ChatInterface
+        ProtectedRoute --> NotesSummarizer
+        ProtectedRoute --> PracticeGenerator
+        ProtectedRoute --> DashboardPage
+        ProtectedRoute --> AdminDashboard
+    end
+```
+
+---
+
+## Layer 3: API Route Structure
+
+```mermaid
+flowchart LR
+    subgraph API_Prefix["/api"]
+        subgraph Auth["/auth"]
+            A1[POST /signup]
+            A2[POST /login]
+            A3[GET /me]
+        end
+
+        subgraph Query["/"]
+            Q1[POST /v1/query]
+        end
+
+        subgraph Content["/content"]
+            C1[/courses]
+            C2[/subjects]
+            C3[/syllabi]
+            C4[/topics]
+            C5[/contexts]
+        end
+
+        subgraph Admin["/admin"]
+            AD1[/institutions]
+            AD2[/roles]
+            AD3[/users]
+            AD4[/content/courses]
+            AD5[/content/subjects]
+            AD6[/content/syllabi]
+            AD7[/content/topics]
+            AD8[/role-assignments]
+            AD9[/kpis]
+        end
+
+        subgraph Institutions["/institutions"]
+            I1[GET /]
+        end
+
+        subgraph Dashboard["/dashboard"]
+            D1[GET /me]
+        end
+    end
+```
+
+---
+
+## Layer 4: Query Pipeline (AI Flow)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Intent
+    participant Retrieval
+    participant Generation
+    participant Validation
+
+    Client->>API: POST /v1/query {query, workflow, marks, top_k}
+    API->>Intent: detect_intent(query, workflow)
+    Intent-->>API: intent (qa | summarize | generate)
+    API->>Retrieval: retrieve(query, top_k)
+    Retrieval->>Retrieval: vectorstore / embeddings (placeholder)
+    Retrieval-->>API: chunks[]
+    API->>Generation: generate(query, intent, context, marks)
+    Generation-->>API: {answer, raw}
+    API->>Validation: validate(generated, context)
+    Validation-->>API: {answer, citations}
+    API-->>Client: QueryResponse {answer, citations, metadata}
+```
+
+---
+
+## Layer 5: Authentication & Authorization Flow
+
+```mermaid
+flowchart TB
+    subgraph Signup["Signup Flow"]
+        S1[User submits email, password, institution_id]
+        S2[.edu required if institution_id]
+        S3[Create User (status: pending)]
+        S4[Return UserRead]
+    end
+
+    subgraph Login["Login Flow"]
+        L1[User submits email, password]
+        L2[Verify credentials]
+        L3[JWT create (sub: user_id)]
+        L4[Return Token + roles]
+        L5[Frontend: localStorage + Authorization header]
+    end
+
+    subgraph Protected["Protected Request"]
+        P1[Request + Authorization: Bearer token]
+        P2[JWT decode → user_id]
+        P3[Load User from DB]
+        P4[RBAC check if admin endpoint]
+    end
+
+    subgraph RBAC["Role-Based Access"]
+        R1[SuperAdmin: full access]
+        R2[InstitutionAdmin: scoped to institution]
+        R3[Student: dashboard, prepare, notes, practice]
+    end
+```
+
+---
+
+## Layer 6: Data Model Relationships
+
+```mermaid
+erDiagram
+    USER ||--o{ ROLE_ASSIGNMENT : has
+    ROLE ||--o{ ROLE_ASSIGNMENT : assigned_to
+    INSTITUTION ||--o{ ROLE_ASSIGNMENT : scoped_to
+    INSTITUTION ||--o{ USER : has
+
+    COURSE ||--o{ SUBJECT : contains
+    SUBJECT ||--o{ SYLLABUS : contains
+    SYLLABUS ||--o{ TOPIC : contains
+
+    USER ||--o{ USER_CONTEXT : has
+    SUBJECT ||--o{ USER_CONTEXT : subject_context
+
+    USER ||--o{ TOPIC_VISIT : visits
+    SUBJECT ||--o{ TOPIC_VISIT : in_subject
+    TOPIC ||--o{ TOPIC_VISIT : topic_visited
+
+    USER ||--o{ AUDIT_LOG : actions
+```
+
+---
+
+## Summary
+
+| Layer | Technologies | Key Responsibilities |
+|-------|--------------|----------------------|
+| **Presentation** | Vite, React, TypeScript | UI, routing, state (AuthContext), API client |
+| **Transport** | HTTP, CORS | Cross-origin, request/response |
+| **API** | FastAPI | Routing, middleware, request validation |
+| **Business** | Agents, RAG, JWT, RBAC | Intent detection, retrieval, generation, validation, auth |
+| **Data** | SQLModel, AsyncSession | ORM, models, transactions |
+| **Persistence** | PostgreSQL | Tables, indexes, storage |

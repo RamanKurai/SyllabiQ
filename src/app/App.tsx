@@ -11,6 +11,8 @@ import { Signup } from './components/Auth/Signup';
 import { LoginPage } from './components/pages/LoginPage';
 import { SignupPage } from './components/pages/SignupPage';
 import ProtectedRoute from './components/organisms/ProtectedRoute';
+import DashboardPage from './components/pages/Dashboard';
+import AdminDashboard from './components/Admin/AdminDashboard';
 
 // Mock data for demonstration
 const SUBJECTS = [
@@ -89,8 +91,8 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const authPaths = ['/login', '/signup', '/admin-login'];
-  const isAuthRoute = authPaths.some((p) => location.pathname.startsWith(p));
+  const fullscreenPaths = ['/login', '/signup', '/admin-login', '/admin', '/dashboard'];
+  const isFullscreenRoute = fullscreenPaths.some((p) => location.pathname.startsWith(p));
 
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject);
@@ -116,14 +118,16 @@ export default function App() {
   // Main app with sidebar
   const topics = selectedSubject ? TOPICS[selectedSubject] || [] : [];
 
-  if (isAuthRoute) {
-    // Fullscreen auth pages — they render their own header/template
+  if (isFullscreenRoute) {
+    // Fullscreen pages (auth + dashboard) — render without global header/sidebar
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/admin-login" element={<div className="p-6">Admin / staff login (use /admin routes)</div>} />
+          <Route path="/admin-login" element={<div className="p-6"><Login redirectTo="/admin" /></div>} />
+          <Route path="/admin" element={<ProtectedRoute children={<AdminDashboard />} />} />
+          <Route path="/dashboard" element={<ProtectedRoute children={<DashboardPage />} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
@@ -153,45 +157,34 @@ export default function App() {
         <div className="flex-1">
           <Routes>
             <Route
-              path="/chat"
-              element={
-                <ProtectedRoute>
-                  <ChatInterface
+              path="/prepare"
+                element={<ProtectedRoute children={<ChatInterface
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
                     examMode={examMode}
                     onSwitchToNotes={() => navigate("/notes")}
                     onSwitchToPractice={() => navigate("/practice")}
-                  />
-                </ProtectedRoute>
-              }
+                  />} />}
             />
+            {/* dashboard is rendered as a fullscreen route above; omit duplicate route here */}
             <Route
               path="/notes"
-              element={
-                <ProtectedRoute>
-                  <NotesSummarizer
+              element={<ProtectedRoute children={<NotesSummarizer
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
-                    onBack={() => navigate("/chat")}
-                  />
-                </ProtectedRoute>
-              }
+                    onBack={() => navigate("/prepare")}
+                  />} />}
             />
             <Route
               path="/practice"
-              element={
-                <ProtectedRoute>
-                  <PracticeGenerator
+              element={<ProtectedRoute children={<PracticeGenerator
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
-                    onBack={() => navigate("/chat")}
+                    onBack={() => navigate("/prepare")}
                     topics={topics}
-                  />
-                </ProtectedRoute>
-              }
+                  />} />}
             />
-            <Route path="*" element={<Navigate to="/chat" replace />} />
+            <Route path="*" element={<Navigate to="/prepare" replace />} />
           </Routes>
         </div>
       </div>
