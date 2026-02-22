@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  adminListPendingUsers,
   adminListUsers,
   approveUser,
   denyUser,
@@ -9,12 +8,63 @@ import {
   adminListRoles,
   adminListInstitutions,
 } from "../../hooks/useApi";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Skeleton } from "../ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { AlertCircle } from "lucide-react";
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "denied", label: "Denied" },
+  { value: "suspended", label: "Suspended" },
+];
+
+function StatusBadge({ status }: { status: string }) {
+  const variant =
+    status === "approved"
+      ? "default"
+      : status === "pending"
+        ? "secondary"
+        : status === "suspended"
+          ? "destructive"
+          : "outline";
+  return <Badge variant={variant}>{status}</Badge>;
+}
 
 export default function AdminUsers() {
   const [users, setUsers] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
+  const [status, setStatus] = React.useState<string | null>(null);
   const [roles, setRoles] = React.useState<any[]>([]);
   const [institutions, setInstitutions] = React.useState<any[]>([]);
   const [assigningUser, setAssigningUser] = React.useState<number | null>(null);
@@ -22,11 +72,11 @@ export default function AdminUsers() {
   const [assignInstitutionId, setAssignInstitutionId] = React.useState<number | null>(null);
 
   const load = React.useCallback(
-    async (p = page, s = status) => {
+    async (p = page, s: string | null = status) => {
       setLoading(true);
+      setError(null);
       try {
         const res = await adminListUsers(pageSize, p * pageSize, s ?? undefined);
-        // normalize to array
         if (Array.isArray(res)) {
           setUsers(res);
         } else if (res && typeof res === "object" && Array.isArray((res as any).results)) {
@@ -44,18 +94,18 @@ export default function AdminUsers() {
         }
       } catch (e) {
         console.error(e);
+        setError(e instanceof Error ? e.message : "Failed to load users");
         setUsers([]);
       } finally {
         setLoading(false);
       }
     },
-    [pageSize, page, roles.length, institutions.length, status]
+    [pageSize, page, status, roles.length, institutions.length]
   );
 
   React.useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   const onApprove = async (id: number) => {
     await approveUser(id);
@@ -72,10 +122,9 @@ export default function AdminUsers() {
     await load();
   };
 
-  const onStatusChange = async (s: string | null) => {
-    setStatus(s);
+  const onStatusChange = (s: string) => {
+    setStatus(s === "all" ? null : s);
     setPage(0);
-    await load(0, s || undefined);
   };
 
   const onStartAssign = (userId: number) => {
@@ -87,139 +136,226 @@ export default function AdminUsers() {
   const onCancelAssign = () => setAssigningUser(null);
 
   const onSubmitAssign = async (userId: number) => {
-    if (!assignRoleId) return alert("Select role");
+    if (!assignRoleId) return;
     await adminAssignRole({ user_id: userId, role_id: assignRoleId, institution_id: assignInstitutionId || null });
     setAssigningUser(null);
     await load();
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (error) {
+    return (
+      <Alert variant="destructive" role="alert">
+        <AlertCircle className="size-4" aria-hidden />
+        <AlertTitle>Error loading users</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (loading && users.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-[300px] w-full" />
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="text-xl font-medium mb-3">Users</h2>
-      <div className="mb-3 flex items-center">
-        <label className="text-sm mr-2">Page size:</label>
-        <select
-          value={pageSize}
-          onChange={(e) => {
-            setPageSize(Number(e.target.value));
-          }}
-          className="border px-2 py-1 mr-4"
-        >
-          <option value={10}>10</option>
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-        </select>
-        <div>
-          <button
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Users</h2>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="page-size" className="text-sm text-muted-foreground">
+            Page size
+          </Label>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger id="page-size" className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="status-filter" className="text-sm text-muted-foreground">
+            Status
+          </Label>
+          <Select value={status ?? "all"} onValueChange={onStatusChange}>
+            <SelectTrigger id="status-filter" className="w-32">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               const np = Math.max(0, page - 1);
               setPage(np);
-              load(np);
+              load(np, status);
             }}
-            className="px-2 py-1 mr-2 bg-gray-200 rounded"
+            disabled={page === 0}
           >
-            Prev
-          </button>
-          <button
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               const np = page + 1;
               setPage(np);
-              load(np);
+              load(np, status);
             }}
-            className="px-2 py-1 bg-gray-200 rounded"
+            disabled={users.length < pageSize}
           >
             Next
-          </button>
+          </Button>
         </div>
       </div>
-      <div className="mb-4 flex items-center gap-4">
-        <label className="text-sm">Status:</label>
-        <select value={status ?? ""} onChange={(e) => onStatusChange(e.target.value || null)} className="border px-2 py-1">
-          <option value="">All</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="denied">Denied</option>
-          <option value="suspended">Suspended</option>
-        </select>
-      </div>
-      <table className="min-w-full text-left">
-        <thead>
-          <tr>
-            <th scope="col" className="px-2 py-1">ID</th>
-            <th scope="col" className="px-2 py-1">Email</th>
-            <th scope="col" className="px-2 py-1">Name</th>
-            <th scope="col" className="px-2 py-1">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="px-4 py-6 text-sm text-gray-600">No pending users.</td>
-            </tr>
-          ) : (
-            users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="px-2 py-2">{u.id}</td>
-                <td className="px-2 py-2">{u.email}</td>
-                <td className="px-2 py-2">{u.full_name || "-"}</td>
-                <td className="px-2 py-2">
-                  <button onClick={() => onApprove(u.id)} className="mr-2 px-2 py-1 bg-green-600 text-white rounded">
-                    Approve
-                  </button>
-                  <button onClick={() => onDeny(u.id)} className="mr-2 px-2 py-1 bg-red-600 text-white rounded">
-                    Deny
-                  </button>
-                  <button onClick={() => onSuspend(u.id)} className="mr-2 px-2 py-1 bg-yellow-600 text-white rounded">
-                    Suspend
-                  </button>
-                  <button onClick={() => onStartAssign(u.id)} className="px-2 py-1 ml-2 bg-indigo-600 text-white rounded">
-                    Assign role
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
 
-      {assigningUser && (
-        <div className="mt-4 p-4 border rounded bg-white">
-          <h3 className="font-medium mb-2">Assign role to user {assigningUser}</h3>
-          <div className="mb-2">
-            <label className="block text-sm">Role</label>
-            <select value={assignRoleId ?? ""} onChange={(e) => setAssignRoleId(e.target.value ? Number(e.target.value) : null)} className="border px-2 py-1">
-              <option value="">Select role</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">ID</TableHead>
+              <TableHead scope="col">Email</TableHead>
+              <TableHead scope="col">Name</TableHead>
+              <TableHead scope="col">Status</TableHead>
+              <TableHead scope="col" className="text-right">
+                Actions
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  No users found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-mono text-sm">{u.id}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.full_name || "-"}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={u.status || "unknown"} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => onApprove(u.id)}
+                        disabled={u.status === "approved"}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onDeny(u.id)}
+                        disabled={u.status === "denied"}
+                      >
+                        Deny
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSuspend(u.id)}
+                        disabled={u.status === "suspended"}
+                      >
+                        Suspend
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onStartAssign(u.id)}
+                      >
+                        Assign role
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={!!assigningUser} onOpenChange={(open) => !open && onCancelAssign()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign role</DialogTitle>
+            <DialogDescription>
+              Assign a role to user {assigningUser}. Optionally scope to an institution.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="assign-role">Role</Label>
+              <Select value={assignRoleId ?? ""} onValueChange={(v) => setAssignRoleId(v ? Number(v) : null)}>
+                <SelectTrigger id="assign-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="assign-institution">Institution (optional)</Label>
+              <Select
+                value={assignInstitutionId != null ? String(assignInstitutionId) : "global"}
+                onValueChange={(v) => setAssignInstitutionId(v === "global" ? null : Number(v))}
+              >
+                <SelectTrigger id="assign-institution">
+                  <SelectValue placeholder="Global" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">Global</SelectItem>
+                  {institutions.map((it) => (
+                    <SelectItem key={it.id} value={String(it.id)}>
+                      {it.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="mb-2">
-            <label className="block text-sm">Institution (optional)</label>
-            <select value={assignInstitutionId ?? ""} onChange={(e) => setAssignInstitutionId(e.target.value ? Number(e.target.value) : null)} className="border px-2 py-1">
-              <option value="">Global</option>
-              {institutions.map((it) => (
-                <option key={it.id} value={it.id}>
-                  {it.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button onClick={() => onSubmitAssign(assigningUser)} className="px-3 py-1 bg-blue-600 text-white rounded mr-2">
-              Assign
-            </button>
-            <button onClick={onCancelAssign} className="px-3 py-1 bg-gray-200 rounded">
+          <DialogFooter>
+            <Button variant="outline" onClick={onCancelAssign}>
               Cancel
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+            <Button
+              onClick={() => assigningUser && onSubmitAssign(assigningUser)}
+              disabled={!assignRoleId}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

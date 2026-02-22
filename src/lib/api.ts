@@ -84,6 +84,7 @@ export type SignupPayload = {
   password: string;
   full_name?: string | null;
   institution_id?: number | null;
+  department_id?: string | null;
 };
 
 export type LoginPayload = {
@@ -190,6 +191,11 @@ export async function getTopics(subjectId: string): Promise<Array<{ id: string; 
 
 export async function getInstitutions(): Promise<Array<{ id: number; name: string }>> {
   return await fetchJson('/institutions');
+}
+
+export async function getDepartments(institutionId?: number): Promise<Array<{ department_id: string; name: string }>> {
+  const q = institutionId != null ? `?institution_id=${institutionId}` : '';
+  return await fetchJson(`/content/departments${q}`);
 }
 
 export async function getDashboard(): Promise<any> {

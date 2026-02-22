@@ -99,19 +99,22 @@ College and university students (18-25 years old)
 - Persistent navigation
 - State preservation
 
-## Mock Data
+## Admin Dashboard
 
-The application uses mock data for demonstration:
-- 8 subjects (Computer Science, Mathematics, Physics, etc.)
-- Subject-specific topics
-- Simulated AI responses based on exam mode
-- Generated practice questions
+- **Departments:** Create and manage departments (e.g., Computer Science, Finance) per institution
+- **Courses:** Manage courses with department assignment (BCA, BBA, BTech)
+- **Subjects, Syllabi, Topics:** Full content hierarchy management
+- **Topic content upload:** Upload PDF, CSV, or DOCX files per topic for RAG indexing
+
+## Backend Integration
+
+The application connects to the SyllabiQ FastAPI backend:
+- **Auth:** Signup with institution + department selection; login returns JWT
+- **RAG:** Chat queries use syllabus/topic content indexed from uploaded files
+- **Content:** Admin manages departments, courses, subjects, syllabi, topics, and topic file uploads
 
 ## Future Enhancements
 
-- Real AI backend integration
-- User authentication
-- Syllabus upload functionality
 - PDF export for summaries and practice questions
 - Progress tracking
 - Personalized learning recommendations
@@ -137,7 +140,7 @@ SyllabiQ is committed to providing an accessible learning experience for all stu
 
 ---
 
-**Note**: This is a frontend demonstration. In production, connect to a real AI backend (like OpenAI, Anthropic, or custom models) and implement proper authentication and data persistence.
+**Note**: The frontend connects to the SyllabiQ FastAPI backend for auth, RAG-based Q&A, and content management. Set `OPENAI_API_KEY` in the backend `.env` for full RAG support.
  
 ## Backend Integration (developer)
 

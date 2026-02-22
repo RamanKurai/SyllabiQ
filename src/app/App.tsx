@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -10,9 +10,18 @@ import { Login } from './components/Auth/Login';
 import { Signup } from './components/Auth/Signup';
 import { LoginPage } from './components/pages/LoginPage';
 import { SignupPage } from './components/pages/SignupPage';
-import ProtectedRoute from './components/organisms/ProtectedRoute';
-import DashboardPage from './components/pages/Dashboard';
-import AdminDashboard from './components/Admin/AdminDashboard';
+import {
+  AdminProtectedRoute,
+  StudentProtectedRoute,
+} from "./components/organisms/ProtectedRoute";
+import DashboardPage from "./components/pages/Dashboard";
+import AdminDashboard from "./components/Admin/AdminDashboard";
+import AdminKpis from "./components/Admin/AdminKpis";
+import AdminUsers from "./components/Admin/AdminUsers";
+import AdminInstitutions from "./components/Admin/AdminInstitutions";
+import AdminRoles from "./components/Admin/AdminRoles";
+import AdminContentManager from "./components/Admin/AdminContentManager";
+import AdminLoginPage from "./components/pages/AdminLoginPage";
 
 // Mock data for demonstration
 const SUBJECTS = [
@@ -91,7 +100,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fullscreenPaths = ['/login', '/signup', '/admin-login', '/admin', '/dashboard'];
+  const fullscreenPaths = ["/login", "/signup", "/admin", "/dashboard"];
   const isFullscreenRoute = fullscreenPaths.some((p) => location.pathname.startsWith(p));
 
   const handleSubjectChange = (subject: string) => {
@@ -125,9 +134,23 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/admin-login" element={<div className="p-6"><Login redirectTo="/admin" /></div>} />
-          <Route path="/admin" element={<ProtectedRoute children={<AdminDashboard />} />} />
-          <Route path="/dashboard" element={<ProtectedRoute children={<DashboardPage />} />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>}>
+            <Route index element={<AdminKpis />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="institutions" element={<AdminInstitutions />} />
+            <Route path="roles" element={<AdminRoles />} />
+            <Route path="content" element={<Outlet />}>
+              <Route index element={<Navigate to="/admin/content/departments" replace />} />
+              <Route path="departments" element={<AdminContentManager />} />
+              <Route path="courses" element={<AdminContentManager />} />
+              <Route path="subjects" element={<AdminContentManager />} />
+              <Route path="syllabi" element={<AdminContentManager />} />
+              <Route path="topics" element={<AdminContentManager />} />
+            </Route>
+          </Route>
+          <Route path="/dashboard" element={<StudentProtectedRoute><DashboardPage /></StudentProtectedRoute>} />
+          <Route path="/admin-login" element={<Navigate to="/admin/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
@@ -158,31 +181,31 @@ export default function App() {
           <Routes>
             <Route
               path="/prepare"
-                element={<ProtectedRoute children={<ChatInterface
+                element={<StudentProtectedRoute><ChatInterface
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
                     examMode={examMode}
                     onSwitchToNotes={() => navigate("/notes")}
                     onSwitchToPractice={() => navigate("/practice")}
-                  />} />}
+                  /></StudentProtectedRoute>}
             />
             {/* dashboard is rendered as a fullscreen route above; omit duplicate route here */}
             <Route
               path="/notes"
-              element={<ProtectedRoute children={<NotesSummarizer
+              element={<StudentProtectedRoute><NotesSummarizer
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
                     onBack={() => navigate("/prepare")}
-                  />} />}
+                  /></StudentProtectedRoute>}
             />
             <Route
               path="/practice"
-              element={<ProtectedRoute children={<PracticeGenerator
+              element={<StudentProtectedRoute><PracticeGenerator
                     selectedSubject={selectedSubject}
                     selectedTopic={selectedTopic}
                     onBack={() => navigate("/prepare")}
                     topics={topics}
-                  />} />}
+                  /></StudentProtectedRoute>}
             />
             <Route path="*" element={<Navigate to="/prepare" replace />} />
           </Routes>

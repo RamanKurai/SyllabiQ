@@ -1,41 +1,59 @@
 import React from "react";
-import AdminLayout, { useAdmin } from "./AdminLayout";
-import AdminUsers from "./AdminUsers";
-import AdminInstitutions from "./AdminInstitutions";
-import AdminRoles from "./AdminRoles";
-import AdminContentManager from "./AdminContentManager";
-import AdminKpis from "./AdminKpis";
+import { Outlet, useLocation } from "react-router-dom";
+import AdminLayout from "./AdminLayout";
+import { Card, CardContent } from "../ui/card";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "../ui/breadcrumb";
+
+const PATH_LABELS: Record<string, string> = {
+  "": "Dashboard",
+  users: "Users",
+  institutions: "Institutions",
+  roles: "Roles",
+  content: "Content",
+  courses: "Courses",
+  subjects: "Subjects",
+  syllabi: "Syllabi",
+  topics: "Topics",
+};
+
+function getBreadcrumbLabel(pathname: string): string {
+  if (pathname === "/admin" || pathname === "/admin/") return "Dashboard";
+  const segments = pathname.replace(/^\/admin\/?/, "").split("/");
+  const last = segments[segments.length - 1];
+  return PATH_LABELS[last] ?? last ?? "Admin";
+}
 
 export default function AdminDashboard() {
+  const location = useLocation();
+  const label = getBreadcrumbLabel(location.pathname);
+
   return (
     <AdminLayout>
-      <AdminDashboardContent />
+      <div className="space-y-6">
+        <Breadcrumb aria-label="Breadcrumb">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <span className="text-muted-foreground">Admin</span>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{label}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <Card>
+          <CardContent className="pt-6">
+            <Outlet />
+          </CardContent>
+        </Card>
+      </div>
     </AdminLayout>
   );
 }
-
-function AdminDashboardContent() {
-  const { activeTab, setActiveTab } = useAdmin();
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <div className="mb-4 hidden">
-        {/* retained for visual parity but navigation is provided in left sidebar */}
-        <button onClick={() => setActiveTab("users")} className={`px-3 py-1 mr-2 ${activeTab === "users" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Users</button>
-        <button onClick={() => setActiveTab("institutions")} className={`px-3 py-1 mr-2 ${activeTab === "institutions" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Institutions</button>
-        <button onClick={() => setActiveTab("roles")} className={`px-3 py-1 mr-2 ${activeTab === "roles" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Roles</button>
-        <button onClick={() => setActiveTab("content")} className={`px-3 py-1 ${activeTab === "content" ? "bg-blue-600 text-white" : "bg-gray-100"}`}>Content</button>
-      </div>
-
-      <div className="bg-white p-4 rounded shadow">
-        {activeTab === "users" && <AdminUsers />}
-        {activeTab === "institutions" && <AdminInstitutions />}
-        {activeTab === "roles" && <AdminRoles />}
-        {activeTab === "content" && <AdminContentManager />}
-        {activeTab === "kpis" && <AdminKpis />}
-      </div>
-    </div>
-  );
-}
-

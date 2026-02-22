@@ -4,25 +4,29 @@ import { useNavigate, Link } from "react-router-dom";
 import { Form, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { authSignup, getInstitutions } from "../../../lib/api";
+import { authSignup, getInstitutions, getDepartments } from "../../../lib/api";
 
 type SignupForm = {
   email: string;
   password: string;
   full_name?: string;
   institution_id?: number | null;
+  department_id?: string | null;
   is_student: boolean;
 };
 
 export function Signup() {
   const methods = useForm<SignupForm>({ mode: "onBlur", defaultValues: { is_student: false } });
-  const { register, handleSubmit, watch, formState } = methods;
+  const { register, handleSubmit, watch, setValue, formState } = methods;
   const [error, setError] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
   const isStudent = watch("is_student");
+  const institutionId = watch("institution_id");
   const [institutions, setInstitutions] = React.useState<Array<{ id: number; name: string }>>([]);
+  const [departments, setDepartments] = React.useState<Array<{ department_id: string; name: string }>>([]);
   const [loadingInstitutions, setLoadingInstitutions] = React.useState(false);
+  const [loadingDepartments, setLoadingDepartments] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -42,10 +46,38 @@ export function Signup() {
     };
   }, []);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    setValue("department_id", "");
+    if (institutionId == null) {
+      setDepartments([]);
+      return;
+    }
+    setLoadingDepartments(true);
+    setDepartments([]);
+    getDepartments(institutionId)
+      .then((list) => {
+        if (!cancelled) setDepartments(list || []);
+      })
+      .catch(() => {
+        if (!cancelled) setDepartments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDepartments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [institutionId]);
+
   async function onSubmit(values: SignupForm) {
     setError(null);
     if (!values.is_student) {
       setError("Signup is allowed only for students. Please confirm.");
+      return;
+    }
+    if (values.institution_id != null && !values.department_id) {
+      setError("Please select a department when signing up with an institution.");
       return;
     }
 
@@ -56,6 +88,7 @@ export function Signup() {
         password: values.password,
         full_name: values.full_name || null,
         institution_id: values.institution_id || null,
+        department_id: values.department_id || null,
       };
 
       await authSignup(payload);
@@ -106,7 +139,7 @@ export function Signup() {
                 {loadingInstitutions ? (
                   <select
                     disabled
-                  className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
                   >
                     <option>Loading institutions…</option>
                   </select>
@@ -119,6 +152,34 @@ export function Signup() {
                     {institutions.map((i) => (
                       <option key={i.id} value={i.id}>
                         {i.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+
+            <FormItem>
+              <FormLabel>Department (required when institution selected)</FormLabel>
+              <FormControl>
+                {loadingDepartments && institutionId ? (
+                  <select
+                    disabled
+                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                  >
+                    <option>Loading departments…</option>
+                  </select>
+                ) : (
+                  <select
+                    {...register("department_id")}
+                    disabled={!institutionId}
+                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                  >
+                    <option value="">{institutionId ? "Select department" : "Select institution first"}</option>
+                    {departments.map((d) => (
+                      <option key={d.department_id} value={d.department_id}>
+                        {d.name}
                       </option>
                     ))}
                   </select>

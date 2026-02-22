@@ -3,11 +3,16 @@ import { authLogin, getAuthMe } from "../../lib/api";
 import { saveToken, clearToken, getToken } from "../../lib/auth";
 import { showSuccess, showError } from "../lib/toast";
 
+const ADMIN_ROLES = ["SuperAdmin", "InstitutionAdmin"];
+
 type AuthContextValue = {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
-  // login returns minimal user/profile that can be used immediately by caller
+  /** True when token exists but user profile (roles) not yet loaded */
+  userLoading: boolean;
+  isAdmin: boolean;
+  roles: string[];
   login: (email: string, password: string) => Promise<Record<string, any> | null>;
   logout: () => void;
   user: Record<string, any> | null;
@@ -80,16 +85,26 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const roles = React.useMemo(() => (user?.roles && Array.isArray(user.roles) ? user.roles : []), [user]);
+  const isAdmin = React.useMemo(
+    () => roles.some((r) => ADMIN_ROLES.includes(r)),
+    [roles],
+  );
+  const userLoading = !!token && user === null;
+
   const value = React.useMemo(
     () => ({
       token,
       isAuthenticated: !!token,
       loading,
+      userLoading,
+      isAdmin,
+      roles,
       login,
       logout,
       user,
     }),
-    [token, loading, login, logout],
+    [token, loading, userLoading, login, logout, user, isAdmin, roles],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

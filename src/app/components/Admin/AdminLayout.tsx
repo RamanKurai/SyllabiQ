@@ -1,165 +1,182 @@
 import React from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useState, createContext, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut, Grid, Users, Home, Building, FileText } from "lucide-react";
+import { useCallback } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import {
+  LogOut,
+  LayoutDashboard,
+  Users,
+  Building2,
+  GraduationCap,
+  FileText,
+  Shield,
+  BookOpen,
+  BookMarked,
+  Library,
+  ListChecks,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "../ui/sidebar";
+import { Button } from "../ui/button";
 
-type AdminTab = "users" | "institutions" | "roles" | "content" | "kpis";
-
-const AdminContext = createContext<{
-  activeTab: AdminTab;
-  setActiveTab: (t: AdminTab) => void;
-  contentSubTab: "courses" | "subjects" | "syllabi" | "topics";
-  setContentSubTab: (s: "courses" | "subjects" | "syllabi" | "topics") => void;
-} | null>(null);
-
-export function useAdmin() {
-  const ctx = useContext(AdminContext);
-  if (!ctx) throw new Error("useAdmin must be used within AdminLayout");
-  return ctx;
-}
+type ContentSubItem = {
+  key: "departments" | "courses" | "subjects" | "syllabi" | "topics";
+  label: string;
+  icon: React.ComponentType;
+  to: string;
+};
 
 export default function AdminLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<AdminTab>("users");
-  const [contentSubTab, setContentSubTab] = useState<"courses" | "subjects" | "syllabi" | "topics">("courses");
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("adminSidebarCollapsed") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  function doLogout() {
+  const location = useLocation();
+  const doLogout = useCallback(() => {
     logout();
-    navigate("/admin-login");
-  }
-
-  function toggleCollapsed() {
-    const v = !collapsed;
-    setCollapsed(v);
-    try {
-      localStorage.setItem("adminSidebarCollapsed", v ? "true" : "false");
-    } catch {}
-  }
+    navigate("/admin/login");
+  }, [logout, navigate]);
 
   return (
-    <AdminContext.Provider value={{ activeTab, setActiveTab, contentSubTab, setContentSubTab }}>
-      <div className="min-h-screen bg-gray-50 flex">
-        {/* Sidebar */}
-        <aside
-          className={`flex-shrink-0 bg-white border-r border-gray-200 transition-all ${
-            collapsed ? "w-16" : "w-56"
-          }`}
-          aria-label="Admin navigation"
-        >
-      <div className="h-full flex flex-col">
-            <div className="p-4 flex items-center justify-between border-b">
-              <div className="flex items-center gap-2">
-                <div className="text-lg font-semibold">{collapsed ? "SQ" : "SyllabiQ"}</div>
-              </div>
-              <button
-                onClick={toggleCollapsed}
-                aria-expanded={!collapsed}
-                className="p-1 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300"
-              >
-                <Grid className="w-5 h-5" aria-hidden="true" />
-              </button>
-            </div>
+    <SidebarProvider defaultOpen className="min-h-svh">
+      <Sidebar collapsible="icon" side="left">
+        <SidebarHeader className="border-b border-sidebar-border">
+          <div className="flex h-8 items-center gap-2 px-2">
+            <span className="font-semibold group-data-[collapsible=icon]:hidden">SyllabiQ</span>
+            <span className="hidden font-semibold group-data-[collapsible=icon]:inline">SQ</span>
+          </div>
+        </SidebarHeader>
 
-            <nav className="p-3 flex-1 space-y-1" role="navigation" aria-label="Admin sections">
-              <NavItem icon={<Home className="w-5 h-5" />} label="Dashboard" tab="kpis" collapsed={collapsed} />
-              <NavItem icon={<Users className="w-5 h-5" />} label="Users" tab="users" collapsed={collapsed} />
-              <NavItem icon={<Building className="w-5 h-5" />} label="Institutions" tab="institutions" collapsed={collapsed} />
-              <div>
-                <NavItem icon={<FileText className="w-5 h-5" />} label="Content" tab="content" collapsed={collapsed} />
-                {!collapsed && (
-                  <div className="mt-1 pl-4 space-y-1" role="menu" aria-label="Content sections">
-                    <button
-                      onClick={() => setContentSubTab("courses")}
-                      className={`text-sm w-full text-left px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                        contentSubTab === "courses" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      Courses
-                    </button>
-                    <button
-                      onClick={() => setContentSubTab("subjects")}
-                      className={`text-sm w-full text-left px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                        contentSubTab === "subjects" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      Subjects
-                    </button>
-                    <button
-                      onClick={() => setContentSubTab("syllabi")}
-                      className={`text-sm w-full text-left px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                        contentSubTab === "syllabi" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      Syllabi
-                    </button>
-                    <button
-                      onClick={() => setContentSubTab("topics")}
-                      className={`text-sm w-full text-left px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-                        contentSubTab === "topics" ? "bg-blue-50 text-blue-600" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      Topics
-                    </button>
-                  </div>
-                )}
-              </div>
-              <NavItem icon={<LogOut className="w-5 h-5" />} label="Roles" tab="roles" collapsed={collapsed} />
-            </nav>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/admin" || location.pathname === "/admin/"} tooltip="Dashboard">
+                    <NavLink to="/admin" end>
+                      <LayoutDashboard className="size-4" aria-hidden />
+                      <span>Dashboard</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/admin/users"} tooltip="Users">
+                    <NavLink to="/admin/users">
+                      <Users className="size-4" aria-hidden />
+                      <span>Users</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/admin/institutions"} tooltip="Institutions">
+                    <NavLink to="/admin/institutions">
+                      <Building2 className="size-4" aria-hidden />
+                      <span>Institutions</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <NavItemWithSub
+                    icon={<FileText className="size-4" aria-hidden />}
+                    label="Content"
+                    pathname={location.pathname}
+                    subItems={[
+                      { key: "departments", label: "Departments", icon: GraduationCap, to: "/admin/content/departments" },
+                      { key: "courses", label: "Courses", icon: BookOpen, to: "/admin/content/courses" },
+                      { key: "subjects", label: "Subjects", icon: BookMarked, to: "/admin/content/subjects" },
+                      { key: "syllabi", label: "Syllabi", icon: Library, to: "/admin/content/syllabi" },
+                      { key: "topics", label: "Topics", icon: ListChecks, to: "/admin/content/topics" },
+                    ]}
+                  />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/admin/roles"} tooltip="Roles">
+                    <NavLink to="/admin/roles">
+                      <Shield className="size-4" aria-hidden />
+                      <span>Roles</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
 
-            <div className="p-3 border-t">
-              <button
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+          <SidebarTrigger aria-label="Toggle sidebar" />
+          <div className="flex flex-1 items-center justify-between">
+            <h1 className="text-lg font-semibold">SyllabiQ Admin</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground" aria-label="Logged in as">
+                {user?.email || ""}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={doLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 aria-label="Logout"
               >
-                <LogOut className="w-5 h-5" aria-hidden="true" />
-                {!collapsed && <span>Logout</span>}
-              </button>
+                <LogOut className="size-4" aria-hidden />
+              </Button>
             </div>
           </div>
-        </aside>
+        </header>
 
-        <div className="flex-1">
-          <header className="bg-white border-b p-4">
-            <div className="max-w-6xl mx-auto flex items-center justify-between">
-              <div className="text-lg font-semibold">SyllabiQ — Admin</div>
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-gray-700">{user?.email || ""}</div>
-              </div>
-            </div>
-          </header>
-
-          <main className="max-w-6xl mx-auto py-6">{children}</main>
-        </div>
-      </div>
-    </AdminContext.Provider>
+        <main className="flex-1 overflow-auto p-6" role="main">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
-function NavItem({ icon, label, tab, collapsed }: { icon: React.ReactNode; label: string; tab: AdminTab; collapsed: boolean }) {
-  const ctx = useContext(AdminContext);
-  if (!ctx) return null;
-  const active = ctx.activeTab === tab;
+function NavItemWithSub({
+  icon,
+  label,
+  subItems,
+  pathname,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  subItems: ContentSubItem[];
+  pathname: string;
+}) {
+  const isContentActive = pathname.startsWith("/admin/content");
   return (
-    <button
-      onClick={() => ctx.setActiveTab(tab)}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300 ${
-        active ? "bg-blue-50" : ""
-      }`}
-      aria-pressed={active}
-    >
-      <div className={`text-gray-700 ${active ? "text-blue-600" : ""}`}>{icon}</div>
-      {!collapsed && <span className="truncate">{label}</span>}
-    </button>
+    <>
+      <SidebarMenuButton asChild isActive={isContentActive} tooltip={label}>
+        <NavLink to="/admin/content/departments">
+          {icon}
+          <span>{label}</span>
+        </NavLink>
+      </SidebarMenuButton>
+      <SidebarMenuSub>
+        {subItems.map((item) => (
+          <SidebarMenuSubItem key={item.key}>
+            <SidebarMenuSubButton asChild isActive={pathname === item.to}>
+              <NavLink to={item.to}>
+                <item.icon className="size-4" aria-hidden />
+                <span>{item.label}</span>
+              </NavLink>
+            </SidebarMenuSubButton>
+          </SidebarMenuSubItem>
+        ))}
+      </SidebarMenuSub>
+    </>
   );
 }
-

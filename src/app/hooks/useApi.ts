@@ -114,6 +114,11 @@ async function contentFetch(path: string, init?: RequestInit) {
   return await handleJson(res);
 }
 
+export async function contentListDepartments(institutionId?: number) {
+  const q = institutionId != null ? `?institution_id=${institutionId}` : "";
+  return await contentFetch(`/departments${q}`);
+}
+
 export async function contentListCourses() {
   return await contentFetch("/courses");
 }
@@ -128,5 +133,26 @@ export async function contentListSyllabi() {
 
 export async function contentListTopics() {
   return await contentFetch("/topics");
+}
+
+export async function contentListTopicContent(topicId: string) {
+  return await contentFetch(`/topics/${topicId}/content`);
+}
+
+export async function contentUploadTopicFile(topicId: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`/api/content/topics/${topicId}/upload`, {
+    method: "POST",
+    headers: authHeader(),
+    body: formData,
+  });
+  const contentType = res.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await res.json() : await res.text();
+  if (!res.ok) {
+    const message = payload?.detail || payload?.message || payload || `Request failed: ${res.status}`;
+    throw new Error(message);
+  }
+  return payload;
 }
 
