@@ -146,7 +146,7 @@ export function ChatInterface({
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50">
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <EmptyState
@@ -167,7 +167,7 @@ export function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white px-6 py-6">
+      <div className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6 sm:py-6">
         <div className="max-w-4xl mx-auto">
           {!selectedSubject && (
             <div 

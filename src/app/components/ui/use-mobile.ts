@@ -1,6 +1,10 @@
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+/**
+ * Breakpoint for mobile layout. Matches Tailwind `md:` (768px).
+ * Mobile = viewport < 768px; Desktop = viewport >= 768px.
+ */
+export const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(

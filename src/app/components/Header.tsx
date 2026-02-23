@@ -1,14 +1,16 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { SubjectSelector } from './molecules/SubjectSelector';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Brand } from './atoms/Brand';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { getUserInitials } from '../lib/user';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -26,7 +28,7 @@ interface HeaderProps {
 
 export function Header({ selectedSubject, onSubjectChange, subjects, showSubjectSelector = true }: HeaderProps) {
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 sticky top-0 z-10">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sm:px-6 sticky top-0 z-10">
       <div className="flex items-center justify-between max-w-7xl mx-auto h-12">
         <div className="flex items-center gap-3 min-w-0">
           <Link to="/" className="inline-flex items-center gap-3">
@@ -36,26 +38,12 @@ export function Header({ selectedSubject, onSubjectChange, subjects, showSubject
 
         <div className="flex items-center gap-4">
           {showSubjectSelector && (
-            <div className="relative">
-              <label htmlFor="subject-selector" className="sr-only">
-                Select subject
-              </label>
-              <select
-                id="subject-selector"
-                value={selectedSubject}
-                onChange={(e) => onSubjectChange(e.target.value)}
-                className="appearance-none bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-blue-500 cursor-pointer min-w-[220px]"
-                aria-label="Select your subject"
-              >
-                <option value="">Select Subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject} value={subject}>
-                    {subject}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 dark:text-gray-400 pointer-events-none" aria-hidden="true" />
-            </div>
+            <SubjectSelector
+              value={selectedSubject}
+              onValueChange={onSubjectChange}
+              options={subjects}
+              placeholder="Select Subject"
+            />
           )}
           
           <div className="flex items-center gap-3">
@@ -115,33 +103,43 @@ function AuthHeaderActions() {
   }, [auth.isAuthenticated, auth.user]);
 
   const user = profile || {};
-  const initials = (user.full_name ? user.full_name.split(" ").map((n: string) => n[0]).join("") : (user.email || "U")).slice(0, 2).toUpperCase();
+  const initials = getUserInitials(user.full_name, user.email);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="inline-flex items-center gap-2 p-0 rounded-md hover:bg-accent px-1"
+          type="button"
+          className="inline-flex size-9 items-center justify-center rounded-full outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-haspopup="menu"
-          aria-expanded="false"
+          aria-label="User menu"
         >
-          <div className="inline-flex items-center gap-2 bg-accent/50 rounded-full px-2 py-1">
-            <Avatar>
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" aria-hidden="true" />
-          </div>
+          <Avatar className="size-9">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom">
-        <DropdownMenuLabel>
-          <div className="font-medium">{user.full_name || user.email}</div>
-          <div className="text-sm text-muted-foreground">{user.email}</div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => { auth.logout(); showInfo("Signed out."); }}>
-          Logout
-        </DropdownMenuItem>
+      <DropdownMenuContent align="end" sideOffset={4} className="w-64">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col gap-2">
+              <div className="font-medium">{user.full_name || user.email}</div>
+              <div className="text-sm text-muted-foreground">{user.email}</div>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              auth.logout();
+              showInfo("Signed out.");
+            }}
+            className="cursor-pointer"
+          >
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

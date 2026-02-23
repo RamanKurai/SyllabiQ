@@ -1,5 +1,6 @@
 import React from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import AdminLayout from "./AdminLayout";
 import { Card, CardContent } from "../ui/card";
 import {
@@ -29,9 +30,25 @@ function getBreadcrumbLabel(pathname: string): string {
   return PATH_LABELS[last] ?? last ?? "Admin";
 }
 
+const RESTRICTED_FOR_PRINCIPAL_TEACHER = [
+  "/admin/institutions",
+  "/admin/roles",
+  "/admin/content",
+];
+
 export default function AdminDashboard() {
   const location = useLocation();
+  const { roles } = useAuth();
   const label = getBreadcrumbLabel(location.pathname);
+
+  const isPrincipalOrTeacher =
+    roles.includes("Principal") || roles.includes("Teacher");
+  const isRestrictedPath = RESTRICTED_FOR_PRINCIPAL_TEACHER.some((p) =>
+    location.pathname.startsWith(p)
+  );
+  if (isPrincipalOrTeacher && isRestrictedPath) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <AdminLayout>

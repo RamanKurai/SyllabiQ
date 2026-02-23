@@ -3,7 +3,9 @@ import { authLogin, getAuthMe } from "../../lib/api";
 import { saveToken, clearToken, getToken } from "../../lib/auth";
 import { showSuccess, showError } from "../lib/toast";
 
-const ADMIN_ROLES = ["SuperAdmin", "InstitutionAdmin"];
+const ADMIN_ROLES = ["SuperAdmin", "InstitutionAdmin", "Principal", "Teacher"];
+
+type RoleAssignment = { role_name: string; institution_id?: number | null };
 
 type AuthContextValue = {
   token: string | null;
@@ -13,6 +15,8 @@ type AuthContextValue = {
   userLoading: boolean;
   isAdmin: boolean;
   roles: string[];
+  /** Institution IDs the user can access (from role assignments). Empty for SuperAdmin (global). */
+  accessibleInstitutionIds: number[];
   login: (email: string, password: string) => Promise<Record<string, any> | null>;
   logout: () => void;
   user: Record<string, any> | null;
@@ -90,6 +94,15 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     () => roles.some((r) => ADMIN_ROLES.includes(r)),
     [roles],
   );
+  const accessibleInstitutionIds = React.useMemo(() => {
+    const ra = user?.role_assignments as RoleAssignment[] | undefined;
+    if (!ra || !Array.isArray(ra)) return [];
+    const ids = new Set<number>();
+    for (const r of ra) {
+      if (r.institution_id != null) ids.add(r.institution_id);
+    }
+    return Array.from(ids);
+  }, [user]);
   const userLoading = !!token && user === null;
 
   const value = React.useMemo(
@@ -100,11 +113,12 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
       userLoading,
       isAdmin,
       roles,
+      accessibleInstitutionIds,
       login,
       logout,
       user,
     }),
-    [token, loading, userLoading, login, logout, user, isAdmin, roles],
+    [token, loading, userLoading, login, logout, user, isAdmin, roles, accessibleInstitutionIds],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

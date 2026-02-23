@@ -57,10 +57,11 @@ type ContentTab = "departments" | "courses" | "subjects" | "syllabi" | "topics";
 
 function getContentTabFromPath(pathname: string): ContentTab {
   if (pathname.endsWith("/departments")) return "departments";
+  if (pathname.endsWith("/courses")) return "courses";
   if (pathname.endsWith("/subjects")) return "subjects";
   if (pathname.endsWith("/syllabi")) return "syllabi";
   if (pathname.endsWith("/topics")) return "topics";
-  return "courses";
+  return "departments";
 }
 
 function toArray(res: any): any[] {
@@ -93,12 +94,14 @@ export default function AdminContentManager() {
 
   const [courseName, setCourseName] = React.useState("");
   const [courseDepartmentId, setCourseDepartmentId] = React.useState<string | null>(null);
+  const [courseInstitutionFilter, setCourseInstitutionFilter] = React.useState<number | null>(null);
   const [editingCourse, setEditingCourse] = React.useState<any | null>(null);
   const [editingCourseDepartmentId, setEditingCourseDepartmentId] = React.useState<string | null>(null);
   const [showCourseModal, setShowCourseModal] = React.useState(false);
 
   const [subjectName, setSubjectName] = React.useState("");
   const [subjectCourseId, setSubjectCourseId] = React.useState<string | null>(null);
+  const [subjectDepartmentFilter, setSubjectDepartmentFilter] = React.useState<string | null>(null);
   const [editingSubjectId, setEditingSubjectId] = React.useState<string | null>(null);
   const [editingSubjectName, setEditingSubjectName] = React.useState("");
   const [editingSubjectCourseId, setEditingSubjectCourseId] = React.useState<string | null>(null);
@@ -119,6 +122,8 @@ export default function AdminContentManager() {
   const [showTopicModal, setShowTopicModal] = React.useState(false);
 
   const [deleteTarget, setDeleteTarget] = React.useState<{ type: string; id: string } | null>(null);
+  const [deptFilterInstitutionId, setDeptFilterInstitutionId] = React.useState<number | null>(null);
+  const [courseFilterDepartmentId, setCourseFilterDepartmentId] = React.useState<string | null>(null);
 
   const loadAll = React.useCallback(async () => {
     setLoading(true);
@@ -329,36 +334,57 @@ export default function AdminContentManager() {
     else if (deleteTarget.type === "topic") await deleteTopic(deleteTarget.id);
   };
 
-  if (error) {
-    return (
-      <Alert variant="destructive" role="alert">
-        <AlertCircle className="size-4" aria-hidden />
-        <AlertTitle>Error loading content</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (loading && courses.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-[300px] w-full" />
-      </div>
-    );
-  }
-
   const getDepartmentName = (id: string) => departments.find((d) => d.department_id === id)?.name ?? "-";
   const getCourseName = (id: string) => courses.find((c) => c.course_id === id)?.course_name ?? "-";
   const getSubjectName = (id: string) => subjects.find((s) => s.subject_id === id)?.subject_name ?? "-";
   const getSyllabusName = (id: string) => syllabi.find((sy) => sy.syllabus_id === id)?.unit_name ?? "-";
 
+  const filteredDepartments = deptFilterInstitutionId != null
+    ? departments.filter((d) => d.institution_id === deptFilterInstitutionId)
+    : departments;
+  const filteredCourses = courseFilterDepartmentId
+    ? courses.filter((c) => c.department_id === courseFilterDepartmentId)
+    : courses;
+
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive" role="alert">
+          <AlertCircle className="size-4" aria-hidden />
+          <AlertTitle>Error loading content</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => { setError(null); loadAll(); }}>
+            Retry
+          </Button>
+        </Alert>
+      )}
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-[300px] w-full" />
+        </div>
+      ) : (
+      <>
       {contentTab === "departments" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Departments</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold">Departments</h2>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="dept-filter-institution" className="text-sm text-muted-foreground">Filter by institution</Label>
+                <Select value={deptFilterInstitutionId?.toString() ?? "__all__"} onValueChange={(v) => setDeptFilterInstitutionId(v === "__all__" ? null : parseInt(v, 10))}>
+                  <SelectTrigger id="dept-filter-institution" className="w-[200px]">
+                    <SelectValue placeholder="All institutions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All institutions</SelectItem>
+                    {institutions.map((i) => (
+                      <SelectItem key={i.id} value={String(i.id)}>{i.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <Button onClick={() => { setEditingDeptId(null); setDeptName(""); setDeptInstitutionId(null); setShowDeptModal(true); }}>
               Add Department
             </Button>
@@ -372,12 +398,12 @@ export default function AdminContentManager() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="dept-institution">Institution (optional)</Label>
-                  <Select value={(editingDeptId ? editingDeptInstitutionId : deptInstitutionId)?.toString() ?? ""} onValueChange={(v) => { const n = v ? parseInt(v, 10) : null; editingDeptId ? setEditingDeptInstitutionId(n) : setDeptInstitutionId(n); }}>
+                  <Select value={(editingDeptId ? editingDeptInstitutionId : deptInstitutionId)?.toString() ?? "__none__"} onValueChange={(v) => { const n = v === "__none__" ? null : parseInt(v, 10); editingDeptId ? setEditingDeptInstitutionId(n) : setDeptInstitutionId(n); }}>
                     <SelectTrigger id="dept-institution">
                       <SelectValue placeholder="Select institution" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {institutions.map((i) => (
                         <SelectItem key={i.id} value={String(i.id)}>{i.name}</SelectItem>
                       ))}
@@ -413,12 +439,12 @@ export default function AdminContentManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {departments.length === 0 ? (
+                {filteredDepartments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No departments found.</TableCell>
                   </TableRow>
                 ) : (
-                  departments.map((d) => (
+                  filteredDepartments.map((d) => (
                     <TableRow key={d.department_id}>
                       <TableCell className="font-mono text-sm">{d.department_id}</TableCell>
                       <TableCell>{d.name}</TableCell>
@@ -442,28 +468,60 @@ export default function AdminContentManager() {
 
       {contentTab === "courses" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Courses</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold">Courses</h2>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="course-filter-department" className="text-sm text-muted-foreground">Filter by department</Label>
+                <Select value={courseFilterDepartmentId ?? "__all__"} onValueChange={(v) => setCourseFilterDepartmentId(v === "__all__" ? null : v)}>
+                  <SelectTrigger id="course-filter-department" className="w-[200px]">
+                    <SelectValue placeholder="All departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All departments</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.department_id} value={d.department_id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <Button onClick={() => { setEditingCourse(null); setCourseName(""); setCourseDepartmentId(null); setShowCourseModal(true); }}>
               Add Course
             </Button>
           </div>
-          <Dialog open={showCourseModal || !!editingCourse} onOpenChange={(open) => { if (!open) { setShowCourseModal(false); setEditingCourse(null); setCourseName(""); setCourseDepartmentId(null); setEditingCourseDepartmentId(null); } }}>
+          <Dialog open={showCourseModal || !!editingCourse} onOpenChange={(open) => { if (!open) { setShowCourseModal(false); setEditingCourse(null); setCourseName(""); setCourseDepartmentId(null); setCourseInstitutionFilter(null); setEditingCourseDepartmentId(null); } }}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>{editingCourse ? "Edit Course" : "Add Course"}</DialogTitle>
                 <DialogDescription>{editingCourse ? "Update the course." : "Enter the course name and department."}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {!editingCourse && (
+                  <div className="space-y-2">
+                    <Label htmlFor="course-institution-filter">Filter departments by institution (optional)</Label>
+                    <Select value={courseInstitutionFilter?.toString() ?? "__all__"} onValueChange={(v) => { setCourseInstitutionFilter(v === "__all__" ? null : parseInt(v, 10)); setCourseDepartmentId(null); }}>
+                      <SelectTrigger id="course-institution-filter">
+                        <SelectValue placeholder="All institutions" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All institutions</SelectItem>
+                        {institutions.map((i) => (
+                          <SelectItem key={i.id} value={String(i.id)}>{i.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="course-department">Department (optional)</Label>
-                  <Select value={(editingCourse ? editingCourseDepartmentId : courseDepartmentId) ?? ""} onValueChange={(v) => editingCourse ? setEditingCourseDepartmentId(v || null) : setCourseDepartmentId(v || null)}>
+                  <Select value={(editingCourse ? editingCourseDepartmentId : courseDepartmentId) ?? "__none__"} onValueChange={(v) => editingCourse ? setEditingCourseDepartmentId(v === "__none__" ? null : v) : setCourseDepartmentId(v === "__none__" ? null : v)}>
                     <SelectTrigger id="course-department">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {departments.map((d) => (
+                      <SelectItem value="__none__">None</SelectItem>
+                      {(courseInstitutionFilter != null ? departments.filter((d) => d.institution_id === courseInstitutionFilter) : departments).map((d) => (
                         <SelectItem key={d.department_id} value={d.department_id}>{d.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -499,12 +557,12 @@ export default function AdminContentManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courses.length === 0 ? (
+                {filteredCourses.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No courses found.</TableCell>
                   </TableRow>
                 ) : (
-                  courses.map((c) => (
+                  filteredCourses.map((c) => (
                     <TableRow key={c.course_id}>
                       <TableCell className="font-mono text-sm">{c.course_id}</TableCell>
                       <TableCell>{c.course_name}</TableCell>
@@ -534,13 +592,29 @@ export default function AdminContentManager() {
               Add Subject
             </Button>
           </div>
-          <Dialog open={showSubjectModal || !!editingSubjectId} onOpenChange={(open) => { if (!open) { setShowSubjectModal(false); setEditingSubjectId(null); setEditingSubjectName(""); setEditingSubjectCourseId(null); setSubjectName(""); setSubjectCourseId(null); } }}>
+          <Dialog open={showSubjectModal || !!editingSubjectId} onOpenChange={(open) => { if (!open) { setShowSubjectModal(false); setEditingSubjectId(null); setEditingSubjectName(""); setEditingSubjectCourseId(null); setSubjectName(""); setSubjectCourseId(null); setSubjectDepartmentFilter(null); } }}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>{editingSubjectId ? "Edit Subject" : "Add Subject"}</DialogTitle>
                 <DialogDescription>{editingSubjectId ? "Update the subject details." : "Enter the subject name and course."}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {!editingSubjectId && (
+                  <div className="space-y-2">
+                    <Label htmlFor="subject-department-filter">Filter courses by department (optional)</Label>
+                    <Select value={subjectDepartmentFilter ?? "__all__"} onValueChange={(v) => { setSubjectDepartmentFilter(v === "__all__" ? null : v); setSubjectCourseId(null); }}>
+                      <SelectTrigger id="subject-department-filter">
+                        <SelectValue placeholder="All departments" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All departments</SelectItem>
+                        {departments.map((d) => (
+                          <SelectItem key={d.department_id} value={d.department_id}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="subject-course">Course</Label>
                   <Select value={(editingSubjectId ? editingSubjectCourseId : subjectCourseId) ?? ""} onValueChange={(v) => editingSubjectId ? setEditingSubjectCourseId(v || null) : setSubjectCourseId(v || null)}>
@@ -548,7 +622,7 @@ export default function AdminContentManager() {
                       <SelectValue placeholder="Select course" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map((c) => (
+                      {(subjectDepartmentFilter ? courses.filter((c) => c.department_id === subjectDepartmentFilter) : courses).map((c) => (
                         <SelectItem key={c.course_id} value={c.course_id}>{c.course_name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -565,7 +639,7 @@ export default function AdminContentManager() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => { setShowSubjectModal(false); setEditingSubjectId(null); setEditingSubjectName(""); setEditingSubjectCourseId(null); setSubjectName(""); setSubjectCourseId(null); }}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setShowSubjectModal(false); setEditingSubjectId(null); setEditingSubjectName(""); setEditingSubjectCourseId(null); setSubjectName(""); setSubjectCourseId(null); setSubjectDepartmentFilter(null); }}>Cancel</Button>
                 <Button onClick={editingSubjectId ? saveSubject : createSubject} disabled={!(editingSubjectId ? editingSubjectName : subjectName).trim() || !(editingSubjectId ? editingSubjectCourseId : subjectCourseId)}>
                   {editingSubjectId ? "Save" : "Create"}
                 </Button>
@@ -830,6 +904,8 @@ export default function AdminContentManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
+      )}
     </div>
   );
 }

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Drawer (vaul) — bottom/top/side overlay for mobile-first UX.
+ * Use for: filters, quick actions, mobile-only panels.
+ * Prefer Sheet (Radix) for: sidebars, desktop-first overlays.
+ */
+
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 

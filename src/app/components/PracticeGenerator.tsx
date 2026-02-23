@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ListChecks, Sparkles, Loader2, CheckCircle2, ArrowLeft, ChevronDown } from 'lucide-react';
+import { ListChecks, Sparkles, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TopicSelector } from './molecules/TopicSelector';
 import { motion } from 'motion/react';
 
 interface PracticeGeneratorProps {
@@ -55,7 +56,7 @@ export function PracticeGenerator({ selectedSubject, selectedTopic, onBack, topi
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <button
             onClick={onBack}
@@ -79,7 +80,7 @@ export function PracticeGenerator({ selectedSubject, selectedTopic, onBack, topi
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Subject Display */}
           {selectedSubject && (
@@ -112,32 +113,16 @@ export function PracticeGenerator({ selectedSubject, selectedTopic, onBack, topi
             <h2 className="text-lg font-semibold text-gray-900">Question Settings</h2>
 
             {/* Topic Selection */}
-            <div>
-              <label htmlFor="practice-topic-selector" className="block mb-2 text-gray-900">
-                Topic / Unit
-              </label>
-              <div className="relative">
-                <select
-                  id="practice-topic-selector"
-                  value={localTopic}
-                  onChange={(e) => {
-                    setLocalTopic(e.target.value);
-                    setError('');
-                  }}
-                  disabled={!selectedSubject}
-                  className="appearance-none w-full bg-gray-50 border border-gray-300 rounded-lg pl-4 pr-10 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-300 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Select topic for practice questions"
-                >
-                  <option value="">Select Topic</option>
-                  {topics.map((topic) => (
-                    <option key={topic} value={topic}>
-                      {topic}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" aria-hidden="true" />
-              </div>
-            </div>
+            <TopicSelector
+              value={localTopic}
+              onValueChange={(v) => {
+                setLocalTopic(v);
+                setError('');
+              }}
+              topics={topics}
+              disabled={!selectedSubject}
+              id="practice-topic-selector"
+            />
 
             {/* Difficulty Selector */}
             <div>

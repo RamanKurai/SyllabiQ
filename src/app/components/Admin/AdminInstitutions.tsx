@@ -51,6 +51,9 @@ export default function AdminInstitutions() {
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
   const [name, setName] = React.useState("");
+  const [adminEmail, setAdminEmail] = React.useState("");
+  const [adminPassword, setAdminPassword] = React.useState("");
+  const [adminFullName, setAdminFullName] = React.useState("");
   const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<number | null>(null);
 
@@ -82,10 +85,24 @@ export default function AdminInstitutions() {
     load();
   }, [load]);
 
-  const onCreate = async () => {
-    if (!name.trim()) return;
-    await createInstitution({ name: name.trim() });
+  const resetCreateForm = () => {
     setName("");
+    setAdminEmail("");
+    setAdminPassword("");
+    setAdminFullName("");
+  };
+
+  const onCreate = async () => {
+    if (!name.trim() || !adminEmail.trim() || !adminPassword) return;
+    await createInstitution({
+      name: name.trim(),
+      institute_admin: {
+        email: adminEmail.trim(),
+        password: adminPassword,
+        full_name: adminFullName.trim() || undefined,
+      },
+    });
+    resetCreateForm();
     setShowCreateModal(false);
     await load();
   };
@@ -122,16 +139,16 @@ export default function AdminInstitutions() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Institutions</h2>
-        <Button onClick={() => { setName(""); setShowCreateModal(true); }}>
+        <Button onClick={() => { resetCreateForm(); setShowCreateModal(true); }}>
           Add Institution
         </Button>
       </div>
 
-      <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) setShowCreateModal(false); setName(""); }}>
+      <Dialog open={showCreateModal} onOpenChange={(open) => { if (!open) { setShowCreateModal(false); resetCreateForm(); } }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add Institution</DialogTitle>
-            <DialogDescription>Enter the name for the new institution.</DialogDescription>
+            <DialogDescription>Enter the institution details and create an institute admin account.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -141,13 +158,53 @@ export default function AdminInstitutions() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Institution name"
-                onKeyDown={(e) => e.key === "Enter" && onCreate()}
+                autoComplete="organization"
               />
+            </div>
+            <div className="border-t pt-4 space-y-4">
+              <p className="text-sm font-medium">Institute Admin (created with institution)</p>
+              <div className="space-y-2">
+                <Label htmlFor="admin-email">Admin email</Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@institution.edu"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-password">Admin password</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-fullname">Admin full name (optional)</Label>
+                <Input
+                  id="admin-fullname"
+                  value={adminFullName}
+                  onChange={(e) => setAdminFullName(e.target.value)}
+                  placeholder="Full name"
+                  autoComplete="name"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowCreateModal(false); setName(""); }}>Cancel</Button>
-            <Button onClick={onCreate} disabled={!name.trim()}>Create</Button>
+            <Button variant="outline" onClick={() => { setShowCreateModal(false); resetCreateForm(); }}>Cancel</Button>
+            <Button
+              onClick={onCreate}
+              disabled={!name.trim() || !adminEmail.trim() || !adminPassword}
+            >
+              Create
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

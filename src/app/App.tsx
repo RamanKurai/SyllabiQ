@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
+import { AppHeader } from './components/organisms/AppHeader';
+import { StudentSidebar } from './components/organisms/StudentSidebar';
+import {
+  Sidebar,
+  SidebarProvider,
+  SidebarInset,
+} from './components/ui/sidebar';
 import { ChatInterface } from './components/ChatInterface';
 import { NotesSummarizer } from './components/NotesSummarizer';
 import { PracticeGenerator } from './components/PracticeGenerator';
@@ -158,26 +163,35 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
-      <Header
-        selectedSubject={selectedSubject}
-        onSubjectChange={handleSubjectChange}
-        subjects={SUBJECTS}
-      />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar
+    <SidebarProvider
+      defaultOpen
+      className="min-h-svh"
+      sidebarWidth="14rem"
+      sidebarWidthMobile="16rem"
+    >
+      <Sidebar collapsible="offcanvas" side="left">
+        <StudentSidebar
           selectedSubject={selectedSubject}
           selectedTopic={selectedTopic}
           examMode={examMode}
+          subjects={SUBJECTS}
+          onSubjectChange={handleSubjectChange}
           onTopicChange={setSelectedTopic}
           onExamModeChange={setExamMode}
           topics={topics}
           history={history}
           onHistoryItemClick={handleHistoryItemClick}
         />
+      </Sidebar>
 
-        <div className="flex-1">
+      <SidebarInset>
+        <AppHeader
+          selectedSubject={selectedSubject}
+          onSubjectChange={handleSubjectChange}
+          subjects={SUBJECTS}
+        />
+
+        <main className="flex-1 overflow-auto" role="main">
           <Routes>
             <Route
               path="/prepare"
@@ -209,8 +223,8 @@ export default function App() {
             />
             <Route path="*" element={<Navigate to="/prepare" replace />} />
           </Routes>
-        </div>
-      </div>
-    </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

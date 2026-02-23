@@ -55,7 +55,7 @@ export function NotesSummarizer({ selectedSubject, selectedTopic, onBack }: Note
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <button
             onClick={onBack}
@@ -79,7 +79,7 @@ export function NotesSummarizer({ selectedSubject, selectedTopic, onBack }: Note
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Subject & Topic Display */}
           {selectedSubject && (

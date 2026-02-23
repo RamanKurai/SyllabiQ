@@ -100,9 +100,18 @@ export async function adminListPendingUsers(limit = 50, offset = 0, institutionI
   return await adminGet(`/users/pending${q}`);
 }
 
-export async function adminListUsers(limit = 50, offset = 0, status?: string, institutionId?: number) {
-  const q = `?limit=${limit}&offset=${offset}${status ? `&status=${encodeURIComponent(status)}` : ""}${institutionId ? `&institution_id=${institutionId}` : ""}`;
-  return await adminGet(`/users${q}`);
+export async function adminListUsers(
+  limit = 50,
+  offset = 0,
+  status?: string,
+  institutionId?: number,
+  roleName?: string
+) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set("status", status);
+  if (institutionId != null) params.set("institution_id", String(institutionId));
+  if (roleName) params.set("role_name", roleName);
+  return await adminGet(`/users?${params.toString()}`);
 }
 
 // Content endpoints (use existing /api/content routes), include auth header
@@ -119,8 +128,9 @@ export async function contentListDepartments(institutionId?: number) {
   return await contentFetch(`/departments${q}`);
 }
 
-export async function contentListCourses() {
-  return await contentFetch("/courses");
+export async function contentListCourses(departmentId?: string) {
+  const q = departmentId != null ? `?department_id=${departmentId}` : "";
+  return await contentFetch(`/courses${q}`);
 }
 
 export async function contentListSubjects() {

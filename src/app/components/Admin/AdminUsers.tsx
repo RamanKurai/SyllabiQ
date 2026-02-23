@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 import {
   adminListUsers,
   approveUser,
@@ -36,7 +37,21 @@ import {
 import { Label } from "../ui/label";
 import { Skeleton } from "../ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { AlertCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "../ui/tooltip";
+import {
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  PauseCircle,
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
@@ -44,6 +59,15 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "denied", label: "Denied" },
   { value: "suspended", label: "Suspended" },
+];
+
+const ROLE_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "SuperAdmin", label: "SuperAdmin" },
+  { value: "InstitutionAdmin", label: "InstitutionAdmin" },
+  { value: "Principal", label: "Principal" },
+  { value: "Teacher", label: "Teacher" },
+  { value: "Student", label: "Student" },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -59,12 +83,16 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AdminUsers() {
+  const { accessibleInstitutionIds, user: currentUser } = useAuth();
+  const currentUserId = currentUser?.id ?? null;
   const [users, setUsers] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(20);
   const [status, setStatus] = React.useState<string | null>(null);
+  const [roleName, setRoleName] = React.useState<string | null>(null);
+  const [selectedInstitutionId, setSelectedInstitutionId] = React.useState<number | null>(null);
   const [roles, setRoles] = React.useState<any[]>([]);
   const [institutions, setInstitutions] = React.useState<any[]>([]);
   const [assigningUser, setAssigningUser] = React.useState<number | null>(null);
@@ -72,11 +100,12 @@ export default function AdminUsers() {
   const [assignInstitutionId, setAssignInstitutionId] = React.useState<number | null>(null);
 
   const load = React.useCallback(
-    async (p = page, s: string | null = status) => {
+    async (p = page, s: string | null = status, r: string | null = roleName) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await adminListUsers(pageSize, p * pageSize, s ?? undefined);
+        const instId = accessibleInstitutionIds.length > 0 ? (selectedInstitutionId ?? accessibleInstitutionIds[0]) : undefined;
+        const res = await adminListUsers(pageSize, p * pageSize, s ?? undefined, instId ?? undefined, r ?? undefined);
         if (Array.isArray(res)) {
           setUsers(res);
         } else if (res && typeof res === "object" && Array.isArray((res as any).results)) {
@@ -100,7 +129,7 @@ export default function AdminUsers() {
         setLoading(false);
       }
     },
-    [pageSize, page, status, roles.length, institutions.length]
+    [pageSize, page, status, roleName, selectedInstitutionId, accessibleInstitutionIds, roles.length, institutions.length]
   );
 
   React.useEffect(() => {
@@ -124,6 +153,11 @@ export default function AdminUsers() {
 
   const onStatusChange = (s: string) => {
     setStatus(s === "all" ? null : s);
+    setPage(0);
+  };
+
+  const onRoleChange = (r: string) => {
+    setRoleName(r === "all" ? null : r);
     setPage(0);
   };
 
@@ -165,10 +199,11 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Users</h2>
+    <TooltipProvider>
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Users</h2>
 
-      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <Label htmlFor="page-size" className="text-sm text-muted-foreground">
             Page size
@@ -201,31 +236,87 @@ export default function AdminUsers() {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="role-filter" className="text-sm text-muted-foreground">
+            Type
+          </Label>
+          <Select value={roleName ?? "all"} onValueChange={onRoleChange}>
+            <SelectTrigger id="role-filter" className="w-40">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {accessibleInstitutionIds.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Label htmlFor="institution-filter" className="text-sm text-muted-foreground">
+              Institution
+            </Label>
+            <Select
+              value={selectedInstitutionId != null ? String(selectedInstitutionId) : String(accessibleInstitutionIds[0])}
+              onValueChange={(v) => {
+                setSelectedInstitutionId(Number(v));
+                setPage(0);
+              }}
+            >
+              <SelectTrigger id="institution-filter" className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {institutions
+                  .filter((i) => accessibleInstitutionIds.includes(i.id))
+                  .map((i) => (
+                    <SelectItem key={i.id} value={String(i.id)}>
+                      {i.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const np = Math.max(0, page - 1);
-              setPage(np);
-              load(np, status);
-            }}
-            disabled={page === 0}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const np = page + 1;
-              setPage(np);
-              load(np, status);
-            }}
-            disabled={users.length < pageSize}
-          >
-            Next
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const np = Math.max(0, page - 1);
+                  setPage(np);
+                  load(np, status, roleName);
+                }}
+                disabled={page === 0}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Previous page</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const np = page + 1;
+                  setPage(np);
+                  load(np, status, roleName);
+                }}
+                disabled={users.length < pageSize}
+                aria-label="Next page"
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Next page</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -260,36 +351,71 @@ export default function AdminUsers() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => onApprove(u.id)}
-                        disabled={u.status === "approved"}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => onDeny(u.id)}
-                        disabled={u.status === "denied"}
-                      >
-                        Deny
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onSuspend(u.id)}
-                        disabled={u.status === "suspended"}
-                      >
-                        Suspend
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => onStartAssign(u.id)}
-                      >
-                        Assign role
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => onApprove(u.id)}
+                            disabled={u.status === "approved" || u.id === currentUserId}
+                            aria-label={`Approve user ${u.email}`}
+                          >
+                            <CheckCircle className="size-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {u.id === currentUserId ? "Cannot approve yourself" : "Approve"}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => onDeny(u.id)}
+                            disabled={u.status === "denied" || u.id === currentUserId}
+                            aria-label={`Deny user ${u.email}`}
+                          >
+                            <XCircle className="size-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {u.id === currentUserId ? "Cannot deny yourself" : "Deny"}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => onSuspend(u.id)}
+                            disabled={u.status === "suspended" || u.id === currentUserId}
+                            aria-label={`Suspend user ${u.email}`}
+                          >
+                            <PauseCircle className="size-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {u.id === currentUserId ? "Cannot suspend yourself" : "Suspend"}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => onStartAssign(u.id)}
+                            disabled={u.id === currentUserId}
+                            aria-label={`Assign role to ${u.email}`}
+                          >
+                            <UserPlus className="size-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {u.id === currentUserId ? "Cannot assign roles to yourself" : "Assign role"}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -357,5 +483,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }

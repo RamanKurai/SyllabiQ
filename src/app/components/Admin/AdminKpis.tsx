@@ -115,7 +115,7 @@ export default function AdminKpis() {
           <h2 className="text-xl font-semibold">Key Performance Indicators</h2>
           <Skeleton className="h-9 w-24" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
           {Array.from({ length: 9 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="pb-2">
@@ -159,15 +159,15 @@ export default function AdminKpis() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">Key Performance Indicators</h2>
-        <div className="flex items-center gap-2">
-          <label htmlFor="kpi-days" className="text-sm text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold sm:text-xl">Key Performance Indicators</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="kpi-days" className="text-sm text-muted-foreground shrink-0">
             Time range
           </label>
           <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
-            <SelectTrigger id="kpi-days" className="w-28">
+            <SelectTrigger id="kpi-days" className="w-full min-w-0 sm:w-28">
               <SelectValue placeholder="Days" />
             </SelectTrigger>
             <SelectContent>
@@ -180,17 +180,17 @@ export default function AdminKpis() {
       </div>
 
       <div
-        className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5"
         role="list"
         aria-label="KPI metrics"
       >
         {metrics.map((m) => (
-          <Card key={m.key} role="listitem">
-            <CardHeader className="pb-2">
-              <CardDescription>{m.label}</CardDescription>
+          <Card key={m.key} role="listitem" className="min-w-0">
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardDescription className="text-xs sm:text-sm truncate">{m.label}</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold tabular-nums" aria-live="polite">
+              <p className="text-xl sm:text-2xl font-semibold tabular-nums truncate" aria-live="polite">
                 {m.value ?? "-"}
               </p>
             </CardContent>
@@ -198,10 +198,10 @@ export default function AdminKpis() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Signups & Approvals</CardTitle>
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Signups & Approvals</CardTitle>
             <CardDescription>Last {days} days</CardDescription>
           </CardHeader>
           <CardContent>
@@ -210,7 +210,7 @@ export default function AdminKpis() {
                 No historical data available.
               </p>
             ) : (
-              <ChartContainer config={chartConfig} className="h-[300px] w-full">
+              <ChartContainer config={chartConfig} className="h-[220px] sm:h-[280px] lg:h-[300px] w-full min-w-0">
                 <LineChart data={series} margin={{ left: 12, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="date" tickLine={false} axisLine={false} />
@@ -236,13 +236,13 @@ export default function AdminKpis() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Content Distribution</CardTitle>
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Content Distribution</CardTitle>
             <CardDescription>By type</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={contentChartConfig} className="h-[300px] w-full">
+            <ChartContainer config={contentChartConfig} className="h-[220px] sm:h-[280px] lg:h-[300px] w-full min-w-0">
               <BarChart data={contentData} layout="vertical" margin={{ left: 12, right: 12 }}>
                 <XAxis type="number" tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={80} />

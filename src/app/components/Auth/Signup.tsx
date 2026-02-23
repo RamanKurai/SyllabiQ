@@ -4,6 +4,13 @@ import { useNavigate, Link } from "react-router-dom";
 import { Form, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { authSignup, getInstitutions, getDepartments } from "../../../lib/api";
 
 type SignupForm = {
@@ -137,24 +144,33 @@ export function Signup() {
               <FormLabel>Institution (optional)</FormLabel>
               <FormControl>
                 {loadingInstitutions ? (
-                  <select
-                    disabled
-                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
-                  >
-                    <option>Loading institutions…</option>
-                  </select>
+                  <Select disabled>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Loading institutions…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__loading__">Loading institutions…</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <select
-                    {...register("institution_id", { valueAsNumber: true })}
-                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                  <Select
+                    value={institutionId != null ? String(institutionId) : "__none__"}
+                    onValueChange={(v) =>
+                      setValue("institution_id", v === "__none__" ? undefined : Number(v))
+                    }
                   >
-                    <option value="">None</option>
-                    {institutions.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {institutions.map((i) => (
+                        <SelectItem key={i.id} value={String(i.id)}>
+                          {i.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </FormControl>
               <FormMessage />
@@ -164,25 +180,38 @@ export function Signup() {
               <FormLabel>Department (required when institution selected)</FormLabel>
               <FormControl>
                 {loadingDepartments && institutionId ? (
-                  <select
-                    disabled
-                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
-                  >
-                    <option>Loading departments…</option>
-                  </select>
+                  <Select disabled>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Loading departments…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__loading__">Loading departments…</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <select
-                    {...register("department_id")}
+                  <Select
+                    value={watch("department_id") || "__none__"}
+                    onValueChange={(v) => setValue("department_id", v === "__none__" ? "" : v)}
                     disabled={!institutionId}
-                    className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input box-border flex h-9 w-full min-w-0 rounded-md border px-4 py-1 text-base bg-input-background transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
                   >
-                    <option value="">{institutionId ? "Select department" : "Select institution first"}</option>
-                    {departments.map((d) => (
-                      <option key={d.department_id} value={d.department_id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          institutionId ? "Select department" : "Select institution first"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {institutionId ? "Select department" : "Select institution first"}
+                      </SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.department_id} value={d.department_id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </FormControl>
               <FormMessage />
