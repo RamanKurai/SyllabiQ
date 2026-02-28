@@ -4,7 +4,7 @@ import {
   SidebarGroupContent,
 } from "../ui/sidebar";
 import { TopicSelector } from "../molecules/TopicSelector";
-import { SubjectSelector } from "../molecules/SubjectSelector";
+import { SubjectSelector, type ContentItem } from "../molecules/SubjectSelector";
 import { ExamModeSelector, type ExamMode } from "../molecules/ExamModeSelector";
 import { QueryHistoryList, type HistoryItem } from "../molecules/QueryHistoryList";
 
@@ -12,11 +12,11 @@ interface StudentSidebarProps {
   selectedSubject: string;
   selectedTopic: string;
   examMode: ExamMode;
-  subjects: string[];
-  onSubjectChange: (subject: string) => void;
-  onTopicChange: (topic: string) => void;
+  subjects: ContentItem[];
+  onSubjectChange: (subjectId: string) => void;
+  onTopicChange: (topicId: string) => void;
   onExamModeChange: (mode: ExamMode) => void;
-  topics: string[];
+  topics: ContentItem[];
   history: HistoryItem[];
   onHistoryItemClick: (query: string) => void;
 }

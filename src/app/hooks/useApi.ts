@@ -114,6 +114,10 @@ export async function adminListUsers(
   return await adminGet(`/users?${params.toString()}`);
 }
 
+export async function adminGetAiKpis(days = 14) {
+  return await adminGet(`/ai-kpis?days=${days}`);
+}
+
 // Content endpoints (use existing /api/content routes), include auth header
 async function contentFetch(path: string, init?: RequestInit) {
   const res = await fetch(`/api/content${path}`, {

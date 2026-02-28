@@ -19,10 +19,15 @@ import { Button } from "../ui/button";
 import { ChevronDownIcon } from "lucide-react";
 import { cn } from "../ui/utils";
 
+export interface ContentItem {
+  id: string;
+  name: string;
+}
+
 interface SubjectSelectorProps {
   value: string;
   onValueChange: (value: string) => void;
-  options: string[];
+  options: ContentItem[];
   placeholder?: string;
   disabled?: boolean;
   id?: string;
@@ -41,8 +46,8 @@ export function SubjectSelector({
 }: SubjectSelectorProps) {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
-  const handleDrawerSelect = (opt: string) => {
-    onValueChange(opt === "__none__" ? "" : opt);
+  const handleDrawerSelect = (id: string) => {
+    onValueChange(id === "__none__" ? "" : id);
     setDrawerOpen(false);
   };
 
@@ -63,7 +68,7 @@ export function SubjectSelector({
               className="w-full justify-between font-normal h-9 min-h-9"
             >
               <span className={cn("truncate", !value && "text-muted-foreground")}>
-                {value || placeholder}
+                {options.find((o) => o.id === value)?.name || placeholder}
               </span>
               <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
             </Button>
@@ -88,16 +93,16 @@ export function SubjectSelector({
                   </DrawerClose>
                 </li>
                 {options.map((opt) => (
-                  <li key={opt}>
+                  <li key={opt.id}>
                     <DrawerClose asChild>
                       <button
                         type="button"
                         role="option"
-                        aria-selected={value === opt}
-                        onClick={() => handleDrawerSelect(opt)}
+                        aria-selected={value === opt.id}
+                        onClick={() => handleDrawerSelect(opt.id)}
                         className="w-full rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       >
-                        {opt}
+                        {opt.name}
                       </button>
                     </DrawerClose>
                   </li>
@@ -126,8 +131,8 @@ export function SubjectSelector({
         <SelectContent>
           <SelectItem value="__none__">{placeholder}</SelectItem>
           {options.map((opt) => (
-            <SelectItem key={opt} value={opt}>
-              {opt}
+            <SelectItem key={opt.id} value={opt.id}>
+              {opt.name}
             </SelectItem>
           ))}
         </SelectContent>

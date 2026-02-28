@@ -7,11 +7,12 @@ import {
 } from "../ui/select";
 import { Label } from "../ui/label";
 import { cn } from "../ui/utils";
+import type { ContentItem } from "./SubjectSelector";
 
 interface TopicSelectorProps {
   value: string;
   onValueChange: (value: string) => void;
-  topics: string[];
+  topics: ContentItem[];
   disabled?: boolean;
   id?: string;
   /** Compact layout for narrow sidebars */
@@ -40,8 +41,8 @@ export function TopicSelector({
         <SelectContent>
           <SelectItem value="__none__">Select Topic</SelectItem>
           {topics.map((topic) => (
-            <SelectItem key={topic} value={topic}>
-              {topic}
+            <SelectItem key={topic.id} value={topic.id}>
+              {topic.name}
             </SelectItem>
           ))}
         </SelectContent>

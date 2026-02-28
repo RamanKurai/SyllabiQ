@@ -13,6 +13,7 @@ import {
 
 const PATH_LABELS: Record<string, string> = {
   "": "Dashboard",
+  "ai-insights": "AI Insights",
   users: "Users",
   institutions: "Institutions",
   roles: "Roles",
@@ -34,6 +35,7 @@ const RESTRICTED_FOR_PRINCIPAL_TEACHER = [
   "/admin/institutions",
   "/admin/roles",
   "/admin/content",
+  "/admin/ai-insights",
 ];
 
 export default function AdminDashboard() {

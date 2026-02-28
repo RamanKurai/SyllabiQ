@@ -1,6 +1,6 @@
 import React from 'react';
 import { ThemeToggle } from './ThemeToggle';
-import { SubjectSelector } from './molecules/SubjectSelector';
+import { SubjectSelector, type ContentItem } from './molecules/SubjectSelector';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Brand } from './atoms/Brand';
@@ -22,7 +22,7 @@ import { useDashboard } from '../context/DashboardContext';
 interface HeaderProps {
   selectedSubject: string;
   onSubjectChange: (subject: string) => void;
-  subjects: string[];
+  subjects: ContentItem[];
   showSubjectSelector?: boolean;
 }
 

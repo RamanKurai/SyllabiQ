@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { LandingPage } from './components/LandingPage';
 import { AppHeader } from './components/organisms/AppHeader';
 import { StudentSidebar } from './components/organisms/StudentSidebar';
 import {
@@ -9,10 +8,9 @@ import {
   SidebarInset,
 } from './components/ui/sidebar';
 import { ChatInterface } from './components/ChatInterface';
+import type { Message as ChatMessage } from './components/ChatInterface';
 import { NotesSummarizer } from './components/NotesSummarizer';
 import { PracticeGenerator } from './components/PracticeGenerator';
-import { Login } from './components/Auth/Login';
-import { Signup } from './components/Auth/Signup';
 import { LoginPage } from './components/pages/LoginPage';
 import { SignupPage } from './components/pages/SignupPage';
 import {
@@ -22,85 +20,25 @@ import {
 import DashboardPage from "./components/pages/Dashboard";
 import AdminDashboard from "./components/Admin/AdminDashboard";
 import AdminKpis from "./components/Admin/AdminKpis";
+import AdminAiInsights from "./components/Admin/AdminAiInsights";
 import AdminUsers from "./components/Admin/AdminUsers";
 import AdminInstitutions from "./components/Admin/AdminInstitutions";
 import AdminRoles from "./components/Admin/AdminRoles";
 import AdminContentManager from "./components/Admin/AdminContentManager";
 import AdminLoginPage from "./components/pages/AdminLoginPage";
-
-// Mock data for demonstration
-const SUBJECTS = [
-  'Computer Science',
-  'Mathematics',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'English Literature',
-  'History',
-  'Economics',
-];
-
-const TOPICS: Record<string, string[]> = {
-  'Computer Science': [
-    'Data Structures',
-    'Algorithms',
-    'Operating Systems',
-    'Database Management',
-    'Computer Networks',
-    'Software Engineering',
-  ],
-  'Mathematics': [
-    'Calculus',
-    'Linear Algebra',
-    'Differential Equations',
-    'Probability & Statistics',
-    'Discrete Mathematics',
-  ],
-  'Physics': [
-    'Mechanics',
-    'Thermodynamics',
-    'Electromagnetism',
-    'Quantum Physics',
-    'Optics',
-  ],
-  'Chemistry': [
-    'Organic Chemistry',
-    'Inorganic Chemistry',
-    'Physical Chemistry',
-    'Analytical Chemistry',
-  ],
-  'Biology': [
-    'Cell Biology',
-    'Genetics',
-    'Evolution',
-    'Ecology',
-    'Human Physiology',
-  ],
-  'English Literature': [
-    'Shakespeare',
-    'Modern Poetry',
-    'Victorian Literature',
-    'American Literature',
-  ],
-  'History': [
-    'Ancient Civilizations',
-    'Medieval History',
-    'Modern History',
-    'World Wars',
-  ],
-  'Economics': [
-    'Microeconomics',
-    'Macroeconomics',
-    'International Trade',
-    'Development Economics',
-  ],
-};
+import { getSubjects, getTopics } from '../lib/api';
+import type { ContentItem } from './components/molecules/SubjectSelector';
+import { useAuth } from './context/AuthContext';
 
 export default function App() {
+  const auth = useAuth();
+  const [subjects, setSubjects] = useState<ContentItem[]>([]);
+  const [topics, setTopics] = useState<ContentItem[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
   const [examMode, setExamMode] = useState<'2-mark' | '5-mark' | '10-mark'>('5-mark');
   const [history, setHistory] = useState<Array<{ id: string; query: string; timestamp: Date }>>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,29 +46,47 @@ export default function App() {
   const fullscreenPaths = ["/login", "/signup", "/admin", "/dashboard"];
   const isFullscreenRoute = fullscreenPaths.some((p) => location.pathname.startsWith(p));
 
-  const handleSubjectChange = (subject: string) => {
-    setSelectedSubject(subject);
-    setSelectedTopic(''); // Reset topic when subject changes
+  useEffect(() => {
+    if (!auth.isAuthenticated) {
+      setSubjects([]);
+      return;
+    }
+    getSubjects()
+      .then(setSubjects)
+      .catch(() => setSubjects([]));
+  }, [auth.isAuthenticated]);
+
+  useEffect(() => {
+    if (selectedSubject) {
+      getTopics(selectedSubject)
+        .then(setTopics)
+        .catch(() => setTopics([]));
+    } else {
+      setTopics([]);
+    }
+  }, [selectedSubject]);
+
+  const selectedSubjectName = subjects.find((s) => s.id === selectedSubject)?.name ?? '';
+  const selectedTopicName = topics.find((t) => t.id === selectedTopic)?.name ?? '';
+
+  const handleSubjectChange = (subjectId: string) => {
+    setSelectedSubject(subjectId);
+    setSelectedTopic('');
   };
+
+  // Keep sidebar history in sync with chat messages (user messages only)
+  useEffect(() => {
+    const userMsgs = chatMessages.filter((m) => m.type === 'user');
+    setHistory(
+      userMsgs.map((m) => ({ id: m.id, query: m.content, timestamp: m.timestamp }))
+    );
+  }, [chatMessages]);
 
   const handleHistoryItemClick = (query: string) => {
-    // In a real app, this would load the previous conversation
-    console.log('Loading query:', query);
+    navigate('/prepare');
+    // Pre-fill the chat input is a UX enhancement; for now just navigate back
+    console.log('Navigating to query:', query);
   };
-
-  const addToHistory = (query: string) => {
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        query,
-        timestamp: new Date(),
-      },
-      ...prev.slice(0, 9), // Keep only last 10 items
-    ]);
-  };
-
-  // Main app with sidebar
-  const topics = selectedSubject ? TOPICS[selectedSubject] || [] : [];
 
   if (isFullscreenRoute) {
     // Fullscreen pages (auth + dashboard) — render without global header/sidebar
@@ -142,6 +98,7 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>}>
             <Route index element={<AdminKpis />} />
+            <Route path="ai-insights" element={<AdminAiInsights />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="institutions" element={<AdminInstitutions />} />
             <Route path="roles" element={<AdminRoles />} />
@@ -174,7 +131,7 @@ export default function App() {
           selectedSubject={selectedSubject}
           selectedTopic={selectedTopic}
           examMode={examMode}
-          subjects={SUBJECTS}
+          subjects={subjects}
           onSubjectChange={handleSubjectChange}
           onTopicChange={setSelectedTopic}
           onExamModeChange={setExamMode}
@@ -188,7 +145,7 @@ export default function App() {
         <AppHeader
           selectedSubject={selectedSubject}
           onSubjectChange={handleSubjectChange}
-          subjects={SUBJECTS}
+          subjects={subjects}
         />
 
         <main className="flex-1 overflow-auto" role="main">
@@ -197,10 +154,14 @@ export default function App() {
               path="/prepare"
                 element={<StudentProtectedRoute><ChatInterface
                     selectedSubject={selectedSubject}
+                    selectedSubjectName={selectedSubjectName}
                     selectedTopic={selectedTopic}
+                    selectedTopicName={selectedTopicName}
                     examMode={examMode}
                     onSwitchToNotes={() => navigate("/notes")}
                     onSwitchToPractice={() => navigate("/practice")}
+                    messages={chatMessages}
+                    setMessages={setChatMessages}
                   /></StudentProtectedRoute>}
             />
             {/* dashboard is rendered as a fullscreen route above; omit duplicate route here */}
@@ -208,7 +169,9 @@ export default function App() {
               path="/notes"
               element={<StudentProtectedRoute><NotesSummarizer
                     selectedSubject={selectedSubject}
+                    selectedSubjectName={selectedSubjectName}
                     selectedTopic={selectedTopic}
+                    selectedTopicName={selectedTopicName}
                     onBack={() => navigate("/prepare")}
                   /></StudentProtectedRoute>}
             />
@@ -216,7 +179,9 @@ export default function App() {
               path="/practice"
               element={<StudentProtectedRoute><PracticeGenerator
                     selectedSubject={selectedSubject}
+                    selectedSubjectName={selectedSubjectName}
                     selectedTopic={selectedTopic}
+                    selectedTopicName={selectedTopicName}
                     onBack={() => navigate("/prepare")}
                     topics={topics}
                   /></StudentProtectedRoute>}

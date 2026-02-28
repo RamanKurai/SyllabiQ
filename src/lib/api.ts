@@ -8,6 +8,10 @@ export type QueryRequest = {
   format?: string;
   subject?: string;
   topic?: string;
+  notes?: string;
+  difficulty?: string;
+  question_type?: string;
+  num_questions?: number;
 };
 
 export type QueryResponse = {
@@ -108,9 +112,9 @@ export async function authLogin(payload: LoginPayload): Promise<Token> {
 
 // Streaming helper: attempts to read server streaming (SSE-ish or NDJSON) and yields text chunks.
 export async function* streamQuery(req: QueryRequest, signal?: AbortSignal): AsyncGenerator<string> {
-  const res = await fetch(`${API_BASE}/v1/query`, {
+  const res = await fetch(`${API_BASE}/v1/query/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeader() },
     body: JSON.stringify(req),
     signal,
   });
@@ -149,15 +153,17 @@ export async function* streamQuery(req: QueryRequest, signal?: AbortSignal): Asy
             const payload = line.replace(/^data:\s*/, '');
             try {
               const parsed = JSON.parse(payload);
-              if (typeof parsed === 'string') {
+              if (parsed.done) {
+                // Terminal event — not user-visible content
+                continue;
+              } else if (typeof parsed === 'string') {
                 yield parsed;
               } else if (parsed.delta || parsed.chunk || parsed.text) {
                 yield (parsed.delta ?? parsed.chunk ?? parsed.text) as string;
               } else if (parsed.answer) {
                 yield parsed.answer as string;
-              } else {
-                // if object unknown, stringify small texts
-                yield JSON.stringify(parsed);
+              } else if (parsed.error) {
+                yield parsed.error as string;
               }
             } catch {
               // non-json data after data:
@@ -182,11 +188,13 @@ export async function* streamQuery(req: QueryRequest, signal?: AbortSignal): Asy
 }
 
 export async function getSubjects(): Promise<Array<{ id: string; name: string }>> {
-  return await fetchJson(`/v1/subjects`);
+  return await fetchJson(`/v1/subjects`, { headers: { ...authHeader() } });
 }
 
 export async function getTopics(subjectId: string): Promise<Array<{ id: string; name: string }>> {
-  return await fetchJson(`/v1/subjects/${encodeURIComponent(subjectId)}/topics`);
+  return await fetchJson(`/v1/subjects/${encodeURIComponent(subjectId)}/topics`, {
+    headers: { ...authHeader() },
+  });
 }
 
 export async function getInstitutions(): Promise<Array<{ id: number; name: string }>> {

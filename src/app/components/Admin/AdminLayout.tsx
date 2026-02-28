@@ -12,6 +12,7 @@ import {
   BookMarked,
   Library,
   ListChecks,
+  BrainCircuit,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,6 +35,8 @@ const canSeeInstitutions = (roles: string[]) =>
 const canSeeContent = (roles: string[]) =>
   roles.includes("SuperAdmin") || roles.includes("InstitutionAdmin");
 const canSeeRoles = (roles: string[]) =>
+  roles.includes("SuperAdmin") || roles.includes("InstitutionAdmin");
+const canSeeAiInsights = (roles: string[]) =>
   roles.includes("SuperAdmin") || roles.includes("InstitutionAdmin");
 
 const contentSubItems: ContentSubItem[] = [
@@ -116,6 +119,17 @@ export default function AdminLayout({ children }: { children?: React.ReactNode }
                       label="Roles"
                       isActive={location.pathname === "/admin/roles"}
                       tooltip="Roles"
+                    />
+                  </SidebarMenuItem>
+                )}
+                {canSeeAiInsights(roles) && (
+                  <SidebarMenuItem>
+                    <SidebarNavLink
+                      to="/admin/ai-insights"
+                      icon={BrainCircuit}
+                      label="AI Insights"
+                      isActive={location.pathname === "/admin/ai-insights"}
+                      tooltip="AI Insights"
                     />
                   </SidebarMenuItem>
                 )}

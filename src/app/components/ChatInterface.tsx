@@ -1,11 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, FileText, ListChecks, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { postQuery, streamQuery, QueryRequest } from '../../lib/api';
 
-interface Message {
+function useDebounce<T extends (...args: any[]) => any>(fn: T, delayMs: number) {
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const debounced = useCallback(
+    (...args: Parameters<T>) => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => fn(...args), delayMs);
+    },
+    [fn, delayMs],
+  );
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return debounced;
+}
+
+export interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
@@ -14,20 +27,27 @@ interface Message {
 
 interface ChatInterfaceProps {
   selectedSubject: string;
+  selectedSubjectName: string;
   selectedTopic: string;
+  selectedTopicName: string;
   examMode: '2-mark' | '5-mark' | '10-mark';
   onSwitchToNotes: () => void;
   onSwitchToPractice: () => void;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
 export function ChatInterface({
   selectedSubject,
+  selectedSubjectName,
   selectedTopic,
+  selectedTopicName,
   examMode,
   onSwitchToNotes,
   onSwitchToPractice,
+  messages,
+  setMessages,
 }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -111,7 +131,7 @@ export function ChatInterface({
           {
             id: (Date.now() + 2).toString(),
             type: 'ai',
-            content: full.answer || generateMockResponse(input, examMode, selectedTopic),
+            content: full.answer || 'No response available. Please try again.',
             timestamp: new Date(),
           },
         ]);
@@ -136,10 +156,12 @@ export function ChatInterface({
     }
   };
 
+  const debouncedSend = useDebounce(handleSend, 400);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      debouncedSend();
     }
   };
 
@@ -150,7 +172,7 @@ export function ChatInterface({
         <div className="max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <EmptyState
-              selectedSubject={selectedSubject}
+              selectedSubject={selectedSubjectName}
               onSwitchToNotes={onSwitchToNotes}
               onSwitchToPractice={onSwitchToPractice}
             />
@@ -340,11 +362,19 @@ function LoadingIndicator() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="flex justify-start"
+      role="status"
+      aria-busy="true"
+      aria-label="Generating answer"
     >
       <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4">
         <div className="flex items-center gap-3">
           <Loader2 className="w-5 h-5 text-blue-600 animate-spin" aria-hidden="true" />
-          <span className="text-gray-600">Generating syllabus‑aligned answer…</span>
+          <span className="text-gray-600">Generating syllabus-aligned answer...</span>
+        </div>
+        <div className="mt-3 space-y-2" aria-hidden="true">
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-3/5" />
         </div>
       </div>
     </motion.div>
@@ -373,14 +403,4 @@ function ActionButton({
       <span className="text-sm">{label}</span>
     </button>
   );
-}
-
-function generateMockResponse(query: string, examMode: string, topic: string): string {
-  const responses = {
-    '2-mark': `Here's a concise answer for your ${examMode} question:\n\n${topic ? `Related to ${topic}: ` : ''}This is a brief, focused response that directly addresses your query about "${query}". The answer is structured to be clear and to-the-point, suitable for a 2-mark exam question.\n\nKey points:\n• Main concept explained\n• Direct answer provided`,
-    '5-mark': `Here's a detailed explanation for your ${examMode} question:\n\n${topic ? `Topic: ${topic}\n\n` : ''}Regarding "${query}":\n\n1. Introduction: This concept is fundamental to understanding the subject matter.\n\n2. Main Explanation: The core idea involves several interconnected aspects that work together to form a comprehensive understanding.\n\n3. Key Points:\n   • First important aspect\n   • Second critical element\n   • Third essential component\n\n4. Conclusion: This provides a solid foundation for exam preparation.`,
-    '10-mark': `Here's a comprehensive answer for your ${examMode} question:\n\n${topic ? `Topic: ${topic}\n\n` : ''}Detailed Analysis of "${query}":\n\n1. INTRODUCTION\nThis topic is crucial for understanding the broader concepts in your syllabus. It connects multiple areas of study and requires thorough comprehension.\n\n2. THEORETICAL BACKGROUND\nThe foundational principles include several key theories and concepts that have been developed over time.\n\n3. DETAILED EXPLANATION\n   a) First Major Point:\n      - Subpoint with detailed explanation\n      - Supporting evidence and examples\n      - Practical applications\n   \n   b) Second Major Point:\n      - Comprehensive breakdown\n      - Interconnections with other concepts\n      - Real-world relevance\n   \n   c) Third Major Point:\n      - Advanced considerations\n      - Critical analysis\n      - Contemporary perspectives\n\n4. PRACTICAL APPLICATIONS\nHow this concept applies in real-world scenarios and its relevance to your field of study.\n\n5. IMPORTANT CONSIDERATIONS\n• Key takeaways for exam preparation\n• Common misconceptions to avoid\n• Tips for remembering this concept\n\n6. CONCLUSION\nSummary of the main points and their significance in the context of your syllabus.`,
-  };
-
-  return responses[examMode as keyof typeof responses] || responses['5-mark'];
 }

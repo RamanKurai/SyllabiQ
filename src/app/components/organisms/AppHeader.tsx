@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "../ThemeToggle";
 import { Brand } from "../atoms/Brand";
-import { SubjectSelector } from "../molecules/SubjectSelector";
+import { SubjectSelector, type ContentItem } from "../molecules/SubjectSelector";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import {
@@ -22,8 +22,8 @@ import { getUserInitials } from "../../lib/user";
 
 interface AppHeaderProps {
   selectedSubject: string;
-  onSubjectChange: (subject: string) => void;
-  subjects: string[];
+  onSubjectChange: (subjectId: string) => void;
+  subjects: ContentItem[];
   showSubjectSelector?: boolean;
 }
 
