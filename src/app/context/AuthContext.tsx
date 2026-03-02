@@ -29,7 +29,13 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
   const [loading, setLoading] = React.useState(false);
   const [user, setUser] = React.useState<Record<string, any> | null>(null);
 
-  // on mount, if token exists fetch authoritative user profile
+  const logout = React.useCallback(() => {
+    clearToken();
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  // on mount, if token exists fetch authoritative user profile; on "User not found" (or any error) auto-logout
   React.useEffect(() => {
     let cancelled = false;
     const t = getToken();
@@ -39,13 +45,13 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
         const me = await getAuthMe();
         if (!cancelled) setUser(me);
       } catch {
-        // ignore
+        if (!cancelled) logout();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [logout]);
 
   const login = React.useCallback(async (email: string, password: string) => {
     setLoading(true);
@@ -81,12 +87,6 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const logout = React.useCallback(() => {
-    clearToken();
-    setToken(null);
-    setUser(null);
   }, []);
 
   const roles = React.useMemo(() => (user?.roles && Array.isArray(user.roles) ? user.roles : []), [user]);
